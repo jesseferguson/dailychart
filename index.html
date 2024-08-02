@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shift Data Chart</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://code.highcharts.com/highcharts.js"></script>
+  <script src="https://code.highcharts.com/modules/series-label.js"></script>
+  <script src="https://code.highcharts.com/modules/exporting.js"></script>
+  <script src="https://code.highcharts.com/modules/export-data.js"></script>
+  <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      font-family: Arial, sans-serif;
+    }
+    #container {
+      width: 75%;
+      height: 70vh;
+    }
+    .current-speed {
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .current-speed div {
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      margin: 0 10px;
+      padding: 20px;
+      text-align: center;
+      flex: 1;
+      min-width: 150px;
+      max-width: 290px;
+      box-sizing: border-box;
+      position: relative;
+      transition: background-color 0.5s;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background-color: #fff;
+    }
+    .current-speed span {
+      font-size: 3vw;
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-weight: bold;
+      width: 100px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .current-speed .press-name {
+      font-size: 1.5vw;
+      display: block;
+      color: #000; /* Black color for readability */
+      text-overflow: ellipsis; /* Add ellipsis for overflow text */
+    }
+    .press-details {
+      width: 25%;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 10px 0;
+    }
+    .press-details table {
+      width: 90%;
+      border-collapse: collapse;
+    }
+    .press-details th, .press-details td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    .press-details th {
+      background-color: #f2f2f2;
+      font-size: 18px;
+    }
+    .press-details .top3 td, .press-details .bottom3 td {
+      font-weight: bold;
+    }
+    .press-details .gold td {
+      background-color: gold;
+    }
+    .press-details .silver td {
+      background-color: silver;
+    }
+    .press-details .bronze td {
+      background-color: #cd7f32;
+    }
+    .press-details .greyed-out td {
+      background-color: #f2f2f2;
+      color: #999;
+    }
+    .downtime {
+      font-size: 20px;
+      font-weight: bold;
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div style="display: flex; height: 70vh;">
+    <div class="press-details" id="pressDetails"></div>
+    <div id="container"></div>
+  </div>
+  <div id="speedContainer" class="current-speed"></div>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "realtime-database-8bbe2.com",
+      databaseURL: "https://realtime-database-8bbe2-default-rtdb.firebaseio.com",
+      projectId: "realtime-database-8bbe2",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let chart = null;
+    let chartData = {};
+    let downtimeData = {};
+    const previousSpeeds = {};
+    const previousValues = {}; // To store previous values for animation
+    let cycleState = 'all'; // Cycle state: 'all', 'top3', 'bottom3'
+    let cycleTimeout;
+
+    // Function to render the chart
+    function renderChart(data) {
+      if (chart) {
+        chart.destroy();
+      }
+
+      const seriesOptions = Object.keys(data).map(key => {
+        return {
+          name: key,
+          data: data[key],
+          color: getColorForPress(key)
+        };
+      });
+
+      chart = Highcharts.chart('container', {
+        chart: {
+          type: 'line',
+          backgroundColor: '#f8f8f8',
+          style: {
+            fontFamily: 'Arial, sans-serif'
+          }
+        },
+        title: {
+          text: `Today's Footage`,
+          style: {
+            fontSize: '24px',
+            fontWeight: 'bold'
+          }
+        },
+        xAxis: {
+          type: 'datetime',
+          title: {
+            text: 'Time',
+            style: {
+              fontSize: '14px'
+            }
+          },
+          min: getStartOfDay().getTime(), // Start at 6 AM today
+          max: getEndOfDay().getTime(), // End at 2:30 AM the next day
+          labels: {
+            formatter: function() {
+              return Highcharts.dateFormat('%I:%M %p', this.value);
+            },
+            style: {
+              fontSize: '12px'
+            }
+          },
+          gridLineWidth: 1,
+          gridLineColor: '#e6e6e6'
+        },
+        yAxis: {
+          title: {
+            text: 'Total Distance',
+            style: {
+              fontSize: '14px'
+            }
+          },
+          labels: {
+            style: {
+              fontSize: '12px'
+            }
+          },
+          gridLineWidth: 1,
+          gridLineColor: '#e6e6e6'
+        },
+        tooltip: {
+          formatter: function() {
+            return '<b>Press Type: ' + this.series.name + '</b><br/>' +
+                   'Total Distance: ' + this.y + '<br/>' +
+                   'Time: ' + Highcharts.dateFormat('%I:%M %p', this.x);
+          },
+          backgroundColor: '#ffffff',
+          borderColor: '#cccccc',
+          borderRadius: 10,
+          shadow: true
+        },
+        plotOptions: {
+          line: {
+            lineWidth: 2,
+            marker: {
+              enabled: false
+            }
+          }
+        },
+        legend: {
+          itemStyle: {
+            fontSize: '14px'
+          }
+        },
+        series: seriesOptions
+      });
+
+      updatePressDetails(seriesOptions);
+    }
+
+    // Function to get the start of the day (6 AM)
+    function getStartOfDay() {
+      const now = new Date();
+      let startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 2);
+      if (now.getHours() < 6) {
+        startOfDay = new Date(startOfDay.getTime() - 86400000); // Go back one day if before 6 AM
+      }
+      return startOfDay;
+    }
+
+    // Function to get the end of the day (2:30 AM the next day)
+    function getEndOfDay() {
+      const endOfDay = new Date(getStartOfDay().getTime() + 86400000); // Add 20 hours to start time
+      endOfDay.setHours(2, 30, 0, 0);
+      return endOfDay;
+    }
+
+    // Function to adjust timestamp
+    function adjustTimestamp(timestamp) {
+      const date = new Date(timestamp.replace(' ', 'T') + 'Z');
+      date.setUTCHours(date.getUTCHours() + 1);
+      return date.getTime();
+    }
+
+    // Function to filter data based on the current day and reset to zero
+    function filterDataForCurrentDay(dataArray) {
+      const startOfDay = getStartOfDay().getTime();
+      const endOfDay = getEndOfDay().getTime();
+      const filteredData = dataArray.filter(record => record[0] >= startOfDay && record[0] <= endOfDay);
+      if (filteredData.length > 0) {
+        const firstValue = filteredData[0][1] || 0;
+        return filteredData.map(record => [record[0], record[1] - firstValue]);
+      }
+      return filteredData;
+    }
+
+    // Function to fetch data and update the chart
+    async function fetchData() {
+      const ref17 = database.ref('17Nilpeter_yearlyData');
+      const ref13 = database.ref('13Nilpeter_yearlyData');
+      const refETI = database.ref('ETI_yearlyData');
+      const ref18 = database.ref('18AZT_yearlyData');
+      const ref13AZT = database.ref('13AZT_yearlyData');
+      const refSlitter = database.ref('Slitter_yearlyData');
+      const data17 = [];
+      const data13 = [];
+      const dataETI = [];
+      const data18 = [];
+      const data13AZT = [];
+      const dataSlitter = [];
+
+      const fetchDataFromRef = (ref, dataArray, name) => {
+        return new Promise((resolve) => {
+          ref.on('value', (snapshot) => {
+            const rawData = snapshot.val();
+            console.log(`${name} raw data:`, rawData); // Debugging statement
+            dataArray.length = 0;
+            for (const key in rawData) {
+              if (rawData.hasOwnProperty(key)) {
+                const record = rawData[key];
+                const adjustedTimestamp = adjustTimestamp(record.timestamp);
+                const yearlyDistance = record.yearlyDistance; // Corrected property name
+                if (adjustedTimestamp && yearlyDistance !== undefined) {
+                  dataArray.push([adjustedTimestamp, yearlyDistance]);
+                }
+              }
+            }
+            dataArray.sort((a, b) => a[0] - b[0]); // Ensure data is sorted by timestamp
+            console.log(`${name} adjusted data:`, dataArray); // Debugging statement
+            resolve();
+          });
+        });
+      };
+
+      await Promise.all([
+        fetchDataFromRef(ref17, data17, '17Nilpeter_yearlyData'),
+        fetchDataFromRef(ref13, data13, '13Nilpeter_yearlyData'),
+        fetchDataFromRef(refETI, dataETI, 'ETI_yearlyData'),
+        fetchDataFromRef(ref18, data18, '18AZT_yearlyData'),
+        fetchDataFromRef(ref13AZT, data13AZT, '13AZT_yearlyData'),
+        fetchDataFromRef(refSlitter, dataSlitter, 'Slitter_yearlyData')
+      ]);
+
+      const filteredData17 = filterDataForCurrentDay(data17);
+      const filteredData13 = filterDataForCurrentDay(data13);
+      const filteredDataETI = filterDataForCurrentDay(dataETI);
+      const filteredData18 = filterDataForCurrentDay(data18);
+      const filteredData13AZT = filterDataForCurrentDay(data13AZT);
+      const filteredDataSlitter = filterDataForCurrentDay(dataSlitter);
+
+      chartData = {
+        '17 Nilpeter': filteredData17,
+        '13 Nilpeter': filteredData13,
+        'ETI': filteredDataETI,
+        '18 Aztech': filteredData18,
+        '13 Aztech': filteredData13AZT,
+        'Slitter': filteredDataSlitter
+      };
+
+      renderChart(chartData);
+      fetchCurrentSpeeds();
+    }
+
+    // Function to fetch current speeds and update the display
+    function fetchCurrentSpeeds() {
+      const speedRefs = [
+        { ref: database.ref('17Nilpeter/currentSpeed'), name: '17 Nilpeter', distanceRef: database.ref('17Nilpeter/totalDistance') },
+        { ref: database.ref('13Nilpeter/currentSpeed'), name: '13 Nilpeter', distanceRef: database.ref('13Nilpeter/totalDistance') },
+        { ref: database.ref('ETI/currentSpeed'), name: 'ETI', distanceRef: database.ref('ETI/totalDistance') },
+        { ref: database.ref('18AZT/currentSpeed'), name: '18 Aztech', distanceRef: database.ref('18AZT/totalDistance') },
+        { ref: database.ref('13AZT/currentSpeed'), name: '13 Aztech', distanceRef: database.ref('13AZT/totalDistance') },
+        { ref: database.ref('Slitter/currentSpeed'), name: 'Slitter', distanceRef: database.ref('Slitter/totalDistance') }
+      ];
+
+      const speedPromises = speedRefs.map(speedRef => {
+        return new Promise((resolve) => {
+          speedRef.ref.on('value', (snapshot) => {
+            const speed = snapshot.val();
+            speedRef.distanceRef.on('value', (distanceSnapshot) => {
+              const totalDistance = distanceSnapshot.val();
+              resolve({ name: speedRef.name, speed: speed, totalDistance: totalDistance });
+            });
+          });
+        });
+      });
+
+      Promise.all(speedPromises).then(speeds => {
+        updateSpeedDisplay(speeds);
+        updateDowntimeData(speeds);
+      }).catch(error => {
+        console.error('Error fetching speeds:', error);
+      });
+    }
+
+    // Function to update downtime data
+    function updateDowntimeData(speeds) {
+      speeds.forEach(speedData => {
+        if (!downtimeData[speedData.name]) {
+          downtimeData[speedData.name] = { lastSpeed: speedData.speed, downtime: 0, startTime: Date.now() };
+        } else {
+          const downtimeRecord = downtimeData[speedData.name];
+          if (speedData.speed === 0) {
+            if (downtimeRecord.lastSpeed !== 0) {
+              downtimeRecord.startTime = Date.now();
+            }
+            downtimeRecord.downtime += (Date.now() - downtimeRecord.startTime) / 1000; // Convert to seconds
+            downtimeRecord.startTime = Date.now();
+          }
+          downtimeRecord.lastSpeed = speedData.speed;
+        }
+      });
+      updatePressDetails();
+    }
+
+    // Function to format downtime in HH:MM:SS format
+    function formatDowntime(seconds) {
+      const hrs = Math.floor(seconds / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${hrs}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+
+    // Function to smoothly animate number changes
+    function animateValue(element, start, end, duration, formatFn = x => x.toLocaleString()) {
+      const range = end - start;
+      const minTimer = 50;
+      const stepTime = Math.abs(Math.floor(duration / range));
+
+      let startTime = new Date().getTime();
+      let endTime = startTime + duration;
+      let timer;
+
+      function run() {
+        const now = new Date().getTime();
+        const remaining = Math.max((endTime - now) / duration, 0);
+        const value = Math.round(end - (remaining * range));
+        element.innerHTML = formatFn(value);
+        if (value == end) {
+          clearInterval(timer);
+        }
+      }
+
+      timer = setInterval(run, stepTime);
+      run();
+    }
+
+    // Function to update the speed display dynamically
+    function updateSpeedDisplay(speeds) {
+      const speedContainer = document.getElementById('speedContainer');
+      speedContainer.innerHTML = ''; // Clear existing elements
+
+      // Sort by total distance in descending order
+      speeds.sort((a, b) => b.totalDistance - a.totalDistance);
+
+      // Create elements for each speed and append to the container
+      speeds.forEach((speedData) => {
+        const previousSpeed = previousSpeeds[speedData.name] || 0;
+        const pressColor = getColorForSpeed(speedData.speed);
+        const speedDiv = document.createElement('div');
+        speedDiv.setAttribute('data-name', speedData.name);
+        speedDiv.style.backgroundColor = pressColor;
+
+        const speedElement = document.createElement('span');
+        speedElement.textContent = previousSpeed.toLocaleString();
+
+        speedDiv.innerHTML = `<span class="press-name">${speedData.name}</span>`;
+        speedDiv.appendChild(speedElement);
+        speedContainer.appendChild(speedDiv);
+
+        // Animate the number change
+        animateValue(speedElement, previousSpeed, speedData.speed, 3000); // Slower animation duration
+
+        // Update the previous speed
+        previousSpeeds[speedData.name] = speedData.speed;
+      });
+    }
+
+    // Function to get color based on speed
+    function getColorForSpeed(speed) {
+      if (speed <= 0) {
+        return 'red';
+      } else if (speed >= 300) {
+        return 'lime';
+      } else if (speed >= 200) {
+        return 'yellow';
+      } else {
+        const red = Math.min(255, 255 - Math.floor(speed * 0 / 500));
+        const green = Math.min(255, Math.floor(speed * 655 / 250));
+        return `rgb(${red},${green},0)`;
+      }
+    }
+
+    // Function to get color for press type
+    function getColorForPress(name) {
+      return name === '17 Nilpeter' ? '#1E90FF' :
+             name === '13 Nilpeter' ? '#32CD32' :
+             name === 'ETI' ? '#800080' :
+             name === '18 Aztech' ? '#FFA500' :
+             name === '13 Aztech' ? '#FF4500' :
+             '#0000FF';
+    }
+
+    // Function to update press details
+    function updatePressDetails() {
+      const pressDetails = document.getElementById('pressDetails');
+      const seriesOptions = chart.series.map(series => ({
+        name: series.name,
+        data: series.data.map(point => [point.x, point.y]),
+        downtime: downtimeData[series.name]?.downtime || 0
+      }));
+      const sortedPresses = seriesOptions.sort((a, b) => (b.data[b.data.length - 1]?.[1] || 0) - (a.data[a.data.length - 1]?.[1] || 0));
+
+      const top3Html = sortedPresses.slice(0, 3).map((series, index) => {
+        const rank = index + 1;
+        const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'greyed-out';
+        const previousValue = previousValues[series.name] || 0;
+        const currentValue = series.data[series.data.length - 1]?.[1] || 0;
+        previousValues[series.name] = currentValue;
+        const previousDowntime = previousValues[series.name + '_downtime'] || 0;
+        const currentDowntime = series.downtime;
+        previousValues[series.name + '_downtime'] = currentDowntime;
+        return `
+          <tr class="${rankClass}">
+            <td>${rank <= 3 ? `<span style="font-size: 1.5em;">${rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</span>` : ''}</td>
+            <td>${series.name}</td>
+            <td class="animated-value" data-previous="${previousValue}" data-value="${currentValue}">${currentValue.toLocaleString()}</td>
+            <td class="animated-downtime" data-previous="${previousDowntime}" data-value="${currentDowntime}">${formatDowntime(currentDowntime)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const bottom3Html = sortedPresses.slice(-3).map((series, index) => {
+        const rank = sortedPresses.length - 2 + index;
+        const previousValue = previousValues[series.name] || 0;
+        const currentValue = series.data[series.data.length - 1]?.[1] || 0;
+        previousValues[series.name] = currentValue;
+        const previousDowntime = previousValues[series.name + '_downtime'] || 0;
+        const currentDowntime = series.downtime;
+        previousValues[series.name + '_downtime'] = currentDowntime;
+        return `
+          <tr class="greyed-out">
+            <td>${rank}</td>
+            <td>${series.name}</td>
+            <td class="animated-value" data-previous="${previousValue}" data-value="${currentValue}">${currentValue.toLocaleString()}</td>
+            <td class="animated-downtime" data-previous="${previousDowntime}" data-value="${currentDowntime}">${formatDowntime(currentDowntime)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const allPressesHtml = sortedPresses.map((series, index) => {
+        const rank = index + 1;
+        const rankClass = rank <= 3 ? (rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze') : 'greyed-out';
+        const previousValue = previousValues[series.name] || 0;
+        const currentValue = series.data[series.data.length - 1]?.[1] || 0;
+        previousValues[series.name] = currentValue;
+        const previousDowntime = previousValues[series.name + '_downtime'] || 0;
+        const currentDowntime = series.downtime;
+        previousValues[series.name + '_downtime'] = currentDowntime;
+        return `
+          <tr class="${rankClass}">
+            <td>${rank <= 3 ? `<span style="font-size: 1.5em;">${rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</span>` : rank}</td>
+            <td>${series.name}</td>
+            <td class="animated-value" data-previous="${previousValue}" data-value="${currentValue}">${currentValue.toLocaleString()}</td>
+            <td class="animated-downtime" data-previous="${previousDowntime}" data-value="${currentDowntime}">${formatDowntime(currentDowntime)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      pressDetails.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Press</th>
+              <th>Total Distance</th>
+              <th>Downtime (HH:MM:SS)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cycleState === 'all' ? allPressesHtml : cycleState === 'top3' ? top3Html : bottom3Html}
+          </tbody>
+        </table>
+      `;
+
+      // Animate number changes for the details table
+      document.querySelectorAll('.animated-value').forEach(element => {
+        const previousValue = parseInt(element.getAttribute('data-previous'), 10);
+        const endValue = parseInt(element.getAttribute('data-value'), 10);
+        animateValue(element, previousValue, endValue, 3000); // Slower animation duration
+      });
+
+      // Animate downtime changes for the details table
+      document.querySelectorAll('.animated-downtime').forEach(element => {
+        const previousValue = parseFloat(element.getAttribute('data-previous'));
+        const endValue = parseFloat(element.getAttribute('data-value'));
+        animateValue(element, previousValue, endValue, 3000, formatDowntime); // Slower animation duration
+      });
+
+      // Update the chart to show the top 3 or bottom 3 presses
+      const visiblePresses = cycleState === 'all' ? sortedPresses : cycleState === 'top3' ? sortedPresses.slice(0, 3) : sortedPresses.slice(-3);
+      chart.series.forEach(series => {
+        const isVisible = visiblePresses.some(visible => visible.name === series.name);
+        series.setVisible(isVisible, false);
+      });
+      chart.redraw();
+
+      // Clear existing timeout and set new cycle timeout
+      clearTimeout(cycleTimeout);
+      cycleTimeout = setTimeout(() => {
+        cycleState = cycleState === 'all' ? 'top3' : cycleState === 'top3' ? 'bottom3' : 'all';
+        updatePressDetails();
+      }, cycleState === 'all' ? 30000 : 10000); // 30 seconds for 'all', 10 seconds for 'top3' and 'bottom3'
+    }
+
+    // Function to reset the chart data for a new day
+    function resetChartData() {
+      chartData = {
+        '17 Nilpeter': [],
+        '13 Nilpeter': [],
+        'ETI': [],
+        '18 Aztech': [],
+        '13 Aztech': [],
+        'Slitter': []
+      };
+      renderChart(chartData);
+    }
+
+    // Function to check if a new day has started and reset data if necessary
+    function checkNewDay() {
+      const now = new Date();
+      const startOfDay = getStartOfDay();
+      const endOfDay = getEndOfDay();
+
+      if (now >= endOfDay || now < startOfDay) {
+        resetChartData();
+      }
+    }
+
+    // Function to add new data points to the existing series
+    function addDataPoints() {
+      const now = Date.now();
+      const seriesNames = Object.keys(chartData);
+
+      seriesNames.forEach(name => {
+        const newData = chartData[name].filter(point => point[0] >= now - 60000); // Get data from the last minute
+        const series = chart.series.find(s => s.name === name);
+        if (series) {
+          newData.forEach(point => {
+            series.addPoint(point, false, false);
+          });
+        }
+      });
+
+      chart.redraw();
+      updatePressDetails();
+    }
+
+    // Fetch initial data
+    fetchData();
+    setInterval(fetchCurrentSpeeds, 5000); // Fetch current speeds every 5 seconds
+    setInterval(addDataPoints, 60000); // Add data points every minute
+    setInterval(checkNewDay, 60000); // Check if a new day has started every minute
+
+  </script>
+</body>
+</html>
