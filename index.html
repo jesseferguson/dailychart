@@ -1,643 +1,635 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shift Data Chart</title>
+  <title>All-In-One Dashboard: Halved 13 Nilpeter (Speed + Footage), 15s Animations</title>
+  <!-- Load Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <script src="https://code.highcharts.com/highcharts.js"></script>
-  <script src="https://code.highcharts.com/modules/series-label.js"></script>
-  <script src="https://code.highcharts.com/modules/exporting.js"></script>
-  <script src="https://code.highcharts.com/modules/export-data.js"></script>
-  <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+  <!-- date-fns adapter for Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+
   <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
+    /* ----------------------------------------------------------
+       1) Basic Page + Layout
+       ---------------------------------------------------------- */
+    body {
       font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f5f5f5;
+      color: #333;
+      transition: background-color 1s linear;
     }
-    #container {
-      width: 75%;
-      height: 70vh;
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 2em;
     }
-    .current-speed {
-      margin-top: 10px;
+    .dashboard {
       display: flex;
-      justify-content: center;
       flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
     }
-    .current-speed div {
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      margin: 0 10px;
-      padding: 20px;
-      text-align: center;
-      flex: 1;
-      min-width: 150px;
-      max-width: 290px;
-      box-sizing: border-box;
+    .chart-container {
+      flex: 2;
+      min-width: 600px;
+      width: 70vw;
+      height: 70vh;
       position: relative;
-      transition: background-color 0.5s;
+    }
+    .speed-containers {
+      flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      background-color: #fff;
+      gap: 20px;
+      min-width: 250px;
+      max-width: 300px;
+      align-items: stretch;
+      justify-content: flex-start;
     }
-    .current-speed span {
-      font-size: 3vw;
-      padding: 5px 10px;
-      border-radius: 5px;
-      font-weight: bold;
-      width: 100px;
-      text-align: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .current-speed .press-name {
-      font-size: 1.5vw;
-      display: block;
-      color: #000; /* Black color for readability */
-      text-overflow: ellipsis; /* Add ellipsis for overflow text */
-    }
-    .press-details {
-      width: 25%;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 10px 0;
-    }
-    .press-details table {
-      width: 90%;
-      border-collapse: collapse;
-    }
-    .press-details th, .press-details td {
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+      background: #fff;
       border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-    .press-details th {
-      background-color: #f2f2f2;
-      font-size: 18px;
-    }
-    .press-details .top3 td, .press-details .bottom3 td {
+
+    /* ----------------------------------------------------------
+       2) Speed Boxes, STOPPED, Slow Speed
+       ---------------------------------------------------------- */
+    .speed-box {
+      border: 2.5px solid #4CAF50;
+      border-radius: 8px;
+      padding: 10px 15px;
+      background-color: #fff;
+      text-align: left;
+      font-size: 1.2em;
       font-weight: bold;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      transition: border-color 0.5s linear;
+      position: relative; 
     }
-    .press-details .gold td {
-      background-color: gold;
+    .speed-box h2 {
+      margin: 0 0 10px;
+      font-size: 1.6em;
     }
-    .press-details .silver td {
-      background-color: silver;
+    .metric-value {
+      font-size: 1em;
+      margin: 0 5px;
     }
-    .press-details .bronze td {
-      background-color: #cd7f32;
-    }
-    .press-details .greyed-out td {
-      background-color: #f2f2f2;
-      color: #999;
-    }
-    .downtime {
-      font-size: 20px;
-      font-weight: bold;
+    .stopped-warning {
       color: red;
+      font-size: 1.3em;
+      font-weight: 800;
+      margin-top: 10px;
+      animation: blink 1s infinite alternate;
+    }
+    @keyframes blink {
+      0%   { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    .hidden {
+      display: none;
+    }
+    /* If speed < 70 => slow-speed pulsing effect */
+    .slow-speed {
+      animation: slowPulse 1.2s infinite alternate;
+    }
+    @keyframes slowPulse {
+      0%   { background-color: #fff; }
+      100% { background-color: #ffcccc; }
+    }
+
+    /* Trophies for top 3 presses */
+    .placement-icon {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 1.8em;
+    }
+
+    /* ----------------------------------------------------------
+       3) SHIFT STATUS BAR
+       ---------------------------------------------------------- */
+    .shift-progress-container {
+      width: 80%;
+      max-width: 800px;
+      height: 15px;
+      background-color: #eee;
+      margin: 0 auto 10px;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    .shift-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #58a;
+      transition: width 0.6s ease-in-out;
+    }
+    .shift-info {
+      text-align: center;
+      font-size: 1em;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    /* ----------------------------------------------------------
+       4) GOAL STATUS BAR (net vs. 300k) + 3% waste
+       ---------------------------------------------------------- */
+    .goal-container {
+      width: 80%;
+      max-width: 800px;
+      height: 30px;
+      background-color: #ccc;
+      margin: 0 auto 20px;
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .goal-net {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background-color: #4CAF50; /* net portion */
+      transition: width 0.6s;
+    }
+    .goal-waste {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      background-color: #F44336; /* 3% slice */
+      transition: width 0.6s;
+    }
+
+    /* Net Production & % of goal info */
+    .net-info {
+      text-align: center;
+      margin-top: -10px;
+      margin-bottom: 20px;
+      font-size: 1.2em;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <div style="display: flex; height: 70vh;">
-    <div class="press-details" id="pressDetails"></div>
-    <div id="container"></div>
+
+  <h1>All-In-One Dashboard</h1>
+
+  <!-- SHIFT BAR -->
+  <div class="shift-progress-container">
+    <div class="shift-progress-bar" id="shiftProgressBar"></div>
   </div>
-  <div id="speedContainer" class="current-speed"></div>
+  <div class="shift-info" id="shiftInfo">Loading shift info...</div>
+
+  <!-- GOAL BAR (net vs. 300k) with 3% slice -->
+  <div class="goal-container">
+    <div class="goal-net" id="goalNet"></div>
+    <div class="goal-waste" id="goalWaste"></div>
+  </div>
+  <!-- Net production + % of goal -->
+  <div class="net-info">
+    Net Production: 
+    <span id="netProduction" data-old-value="0">0</span> ft 
+    (<span id="goalPercentage" data-old-value="0">0</span>% of goal)
+  </div>
+
+  <div class="dashboard">
+    <!-- Chart container for daily footage (3 presses) -->
+    <div class="chart-container">
+      <canvas id="footageChart"></canvas>
+    </div>
+
+    <!-- Speed boxes, re-sorted in JS -->
+    <div class="speed-containers">
+
+      <!-- 17 Nilpeter -->
+      <div class="speed-box" id="speedBox_nilpeter">
+        <h2>17 Nilpeter</h2>
+        <div class="placement-icon" id="placementIcon_nilpeter"></div>
+        <div>Speed: 
+          <span class="metric-value" id="currentSpeed_nilpeter" data-old-value="0">0</span> ft/min
+        </div>
+        <div>Footage:
+          <span class="metric-value" id="totalFootage_nilpeter" data-old-value="0">0</span> ft
+        </div>
+        <div class="stopped-warning hidden" id="stopped_nilpeter">STOPPED</div>
+      </div>
+
+      <!-- 18" Aztech -->
+      <div class="speed-box" id="speedBox_aztech">
+        <h2>18" Aztech</h2>
+        <div class="placement-icon" id="placementIcon_aztech"></div>
+        <div>Speed:
+          <span class="metric-value" id="currentSpeed_aztech" data-old-value="0">0</span> ft/min
+        </div>
+        <div>Footage:
+          <span class="metric-value" id="totalFootage_aztech" data-old-value="0">0</span> ft
+        </div>
+        <div class="stopped-warning hidden" id="stopped_aztech">STOPPED</div>
+      </div>
+
+      <!-- 13 Nilpeter -->
+      <div class="speed-box" id="speedBox_nilpeter13">
+        <h2>13 Nilpeter</h2>
+        <div class="placement-icon" id="placementIcon_nilpeter13"></div>
+        <div>Speed:
+          <span class="metric-value" id="currentSpeed_nilpeter13" data-old-value="0">0</span> ft/min
+        </div>
+        <div>Footage:
+          <span class="metric-value" id="totalFootage_nilpeter13" data-old-value="0">0</span> ft
+        </div>
+        <div class="stopped-warning hidden" id="stopped_nilpeter13">STOPPED</div>
+      </div>
+
+    </div>
+  </div>
 
   <script>
-    // Firebase configuration
-    const firebaseConfig = {
+    // --------------------------------------------------------------------------
+    // Firebase config
+    // --------------------------------------------------------------------------
+    var firebaseConfig = {
       apiKey: "YOUR_API_KEY",
       authDomain: "realtime-database-8bbe2.com",
       databaseURL: "https://realtime-database-8bbe2-default-rtdb.firebaseio.com",
       projectId: "realtime-database-8bbe2",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      storageBucket: "YOUR_PROJECT_ID",
       messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
       appId: "YOUR_APP_ID"
     };
-
-    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
 
-    let chart = null;
-    let chartData = {};
-    let downtimeData = {};
-    const previousSpeeds = {};
-    const previousValues = {}; // To store previous values for animation
-    let cycleState = 'all'; // Cycle state: 'all', 'top3', 'bottom3'
-    let cycleTimeout;
-
-    // Function to render the chart
-    function renderChart(data) {
-      if (chart) {
-        chart.destroy();
-      }
-
-      const seriesOptions = Object.keys(data).map(key => {
-        return {
-          name: key,
-          data: data[key],
-          color: getColorForPress(key)
-        };
-      });
-
-      chart = Highcharts.chart('container', {
-        chart: {
-          type: 'line',
-          backgroundColor: '#f8f8f8',
-          style: {
-            fontFamily: 'Arial, sans-serif'
-          }
-        },
-        title: {
-          text: `Today's Footage`,
-          style: {
-            fontSize: '24px',
-            fontWeight: 'bold'
-          }
-        },
-        xAxis: {
-          type: 'datetime',
-          title: {
-            text: 'Time',
-            style: {
-              fontSize: '14px'
-            }
-          },
-          min: getStartOfDay().getTime(), // Start at 6 AM today
-          max: getEndOfDay().getTime(), // End at 2:30 AM the next day
-          labels: {
-            formatter: function() {
-              return Highcharts.dateFormat('%I:%M %p', this.value);
-            },
-            style: {
-              fontSize: '12px'
-            }
-          },
-          gridLineWidth: 1,
-          gridLineColor: '#e6e6e6'
-        },
-        yAxis: {
-          title: {
-            text: 'Total Distance',
-            style: {
-              fontSize: '14px'
-            }
-          },
-          labels: {
-            style: {
-              fontSize: '12px'
-            }
-          },
-          gridLineWidth: 1,
-          gridLineColor: '#e6e6e6'
-        },
-        tooltip: {
-          formatter: function() {
-            return '<b>Press Type: ' + this.series.name + '</b><br/>' +
-                   'Total Distance: ' + this.y + '<br/>' +
-                   'Time: ' + Highcharts.dateFormat('%I:%M %p', this.x);
-          },
-          backgroundColor: '#ffffff',
-          borderColor: '#cccccc',
-          borderRadius: 10,
-          shadow: true
-        },
-        plotOptions: {
-          line: {
-            lineWidth: 2,
-            marker: {
-              enabled: false
-            }
-          }
-        },
-        legend: {
-          itemStyle: {
-            fontSize: '14px'
-          }
-        },
-        series: seriesOptions
-      });
-
-      updatePressDetails(seriesOptions);
-    }
-
-    // Function to get the start of the day (6 AM)
-    function getStartOfDay() {
+    // --------------------------------------------------------------------------
+    // SHIFT BAR LOGIC
+    // --------------------------------------------------------------------------
+    function getCurrentShiftInfo() {
       const now = new Date();
-      let startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 2);
-      if (now.getHours() < 6) {
-        startOfDay = new Date(startOfDay.getTime() - 86400000); // Go back one day if before 6 AM
-      }
-      return startOfDay;
-    }
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-    // Function to get the end of the day (2:30 AM the next day)
-    function getEndOfDay() {
-      const endOfDay = new Date(getStartOfDay().getTime() + 86400000); // Add 20 hours to start time
-      endOfDay.setHours(2, 30, 0, 0);
-      return endOfDay;
-    }
+      const dayStartMins = 6 * 60;
+      const dayEndMins   = 16 * 60 + 30;
+      const nightStartMins = 16 * 60;
+      const nightEndMins   = 2 * 60 + 20;
 
-    // Function to adjust timestamp
-    function adjustTimestamp(timestamp) {
-      const date = new Date(timestamp.replace(' ', 'T') + 'Z');
-      date.setUTCHours(date.getUTCHours() + 1);
-      return date.getTime();
-    }
+      let shiftName, shiftStart, shiftEnd;
 
-    // Function to filter data based on the current day and reset to zero
-    function filterDataForCurrentDay(dataArray) {
-      const startOfDay = getStartOfDay().getTime();
-      const endOfDay = getEndOfDay().getTime();
-      const filteredData = dataArray.filter(record => record[0] >= startOfDay && record[0] <= endOfDay);
-      if (filteredData.length > 0) {
-        const firstValue = filteredData[0][1] || 0;
-        return filteredData.map(record => [record[0], record[1] - firstValue]);
-      }
-      return filteredData;
-    }
-
-    // Function to fetch data and update the chart
-    async function fetchData() {
-      const ref17 = database.ref('17Nilpeter_yearlyData');
-      const ref13 = database.ref('13Nilpeter_yearlyData');
-      const refETI = database.ref('ETI_yearlyData');
-      const ref18 = database.ref('18AZT_yearlyData');
-      const ref13AZT = database.ref('13AZT_yearlyData');
-      const refSlitter = database.ref('Slitter_yearlyData');
-      const data17 = [];
-      const data13 = [];
-      const dataETI = [];
-      const data18 = [];
-      const data13AZT = [];
-      const dataSlitter = [];
-
-      const fetchDataFromRef = (ref, dataArray, name) => {
-        return new Promise((resolve) => {
-          ref.on('value', (snapshot) => {
-            const rawData = snapshot.val();
-            console.log(`${name} raw data:`, rawData); // Debugging statement
-            dataArray.length = 0;
-            for (const key in rawData) {
-              if (rawData.hasOwnProperty(key)) {
-                const record = rawData[key];
-                const adjustedTimestamp = adjustTimestamp(record.timestamp);
-                const yearlyDistance = record.yearlyDistance; // Corrected property name
-                if (adjustedTimestamp && yearlyDistance !== undefined) {
-                  dataArray.push([adjustedTimestamp, yearlyDistance]);
-                }
-              }
-            }
-            dataArray.sort((a, b) => a[0] - b[0]); // Ensure data is sorted by timestamp
-            console.log(`${name} adjusted data:`, dataArray); // Debugging statement
-            resolve();
-          });
-        });
-      };
-
-      await Promise.all([
-        fetchDataFromRef(ref17, data17, '17Nilpeter_yearlyData'),
-        fetchDataFromRef(ref13, data13, '13Nilpeter_yearlyData'),
-        fetchDataFromRef(refETI, dataETI, 'ETI_yearlyData'),
-        fetchDataFromRef(ref18, data18, '18AZT_yearlyData'),
-        fetchDataFromRef(ref13AZT, data13AZT, '13AZT_yearlyData'),
-        fetchDataFromRef(refSlitter, dataSlitter, 'Slitter_yearlyData')
-      ]);
-
-      const filteredData17 = filterDataForCurrentDay(data17);
-      const filteredData13 = filterDataForCurrentDay(data13);
-      const filteredDataETI = filterDataForCurrentDay(dataETI);
-      const filteredData18 = filterDataForCurrentDay(data18);
-      const filteredData13AZT = filterDataForCurrentDay(data13AZT);
-      const filteredDataSlitter = filterDataForCurrentDay(dataSlitter);
-
-      chartData = {
-        '17 Nilpeter': filteredData17,
-        '13 Nilpeter': filteredData13,
-        'ETI': filteredDataETI,
-        '18 Aztech': filteredData18,
-        '13 Aztech': filteredData13AZT,
-        'Slitter': filteredDataSlitter
-      };
-
-      renderChart(chartData);
-      fetchCurrentSpeeds();
-    }
-
-    // Function to fetch current speeds and update the display
-    function fetchCurrentSpeeds() {
-      const speedRefs = [
-        { ref: database.ref('17Nilpeter/currentSpeed'), name: '17 Nilpeter', distanceRef: database.ref('17Nilpeter/totalDistance') },
-        { ref: database.ref('13Nilpeter/currentSpeed'), name: '13 Nilpeter', distanceRef: database.ref('13Nilpeter/totalDistance') },
-        { ref: database.ref('ETI/currentSpeed'), name: 'ETI', distanceRef: database.ref('ETI/totalDistance') },
-        { ref: database.ref('18AZT/currentSpeed'), name: '18 Aztech', distanceRef: database.ref('18AZT/totalDistance') },
-        { ref: database.ref('13AZT/currentSpeed'), name: '13 Aztech', distanceRef: database.ref('13AZT/totalDistance') },
-        { ref: database.ref('Slitter/currentSpeed'), name: 'Slitter', distanceRef: database.ref('Slitter/totalDistance') }
-      ];
-
-      const speedPromises = speedRefs.map(speedRef => {
-        return new Promise((resolve) => {
-          speedRef.ref.on('value', (snapshot) => {
-            const speed = snapshot.val();
-            speedRef.distanceRef.on('value', (distanceSnapshot) => {
-              const totalDistance = distanceSnapshot.val();
-              resolve({ name: speedRef.name, speed: speed, totalDistance: totalDistance });
-            });
-          });
-        });
-      });
-
-      Promise.all(speedPromises).then(speeds => {
-        updateSpeedDisplay(speeds);
-        updateDowntimeData(speeds);
-      }).catch(error => {
-        console.error('Error fetching speeds:', error);
-      });
-    }
-
-    // Function to update downtime data
-    function updateDowntimeData(speeds) {
-      speeds.forEach(speedData => {
-        if (!downtimeData[speedData.name]) {
-          downtimeData[speedData.name] = { lastSpeed: speedData.speed, downtime: 0, startTime: Date.now() };
-        } else {
-          const downtimeRecord = downtimeData[speedData.name];
-          if (speedData.speed === 0) {
-            if (downtimeRecord.lastSpeed !== 0) {
-              downtimeRecord.startTime = Date.now();
-            }
-            downtimeRecord.downtime += (Date.now() - downtimeRecord.startTime) / 1000; // Convert to seconds
-            downtimeRecord.startTime = Date.now();
-          }
-          downtimeRecord.lastSpeed = speedData.speed;
-        }
-      });
-      updatePressDetails();
-    }
-
-    // Function to format downtime in HH:MM:SS format
-    function formatDowntime(seconds) {
-      const hrs = Math.floor(seconds / 3600);
-      const mins = Math.floor((seconds % 3600) / 60);
-      const secs = Math.floor(seconds % 60);
-      return `${hrs}:${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    }
-
-    // Function to smoothly animate number changes
-    function animateValue(element, start, end, duration, formatFn = x => x.toLocaleString()) {
-      const range = end - start;
-      const minTimer = 50;
-      const stepTime = Math.abs(Math.floor(duration / range));
-
-      let startTime = new Date().getTime();
-      let endTime = startTime + duration;
-      let timer;
-
-      function run() {
-        const now = new Date().getTime();
-        const remaining = Math.max((endTime - now) / duration, 0);
-        const value = Math.round(end - (remaining * range));
-        element.innerHTML = formatFn(value);
-        if (value == end) {
-          clearInterval(timer);
-        }
-      }
-
-      timer = setInterval(run, stepTime);
-      run();
-    }
-
-    // Function to update the speed display dynamically
-    function updateSpeedDisplay(speeds) {
-      const speedContainer = document.getElementById('speedContainer');
-      speedContainer.innerHTML = ''; // Clear existing elements
-
-      // Sort by total distance in descending order
-      speeds.sort((a, b) => b.totalDistance - a.totalDistance);
-
-      // Create elements for each speed and append to the container
-      speeds.forEach((speedData) => {
-        const previousSpeed = previousSpeeds[speedData.name] || 0;
-        const pressColor = getColorForSpeed(speedData.speed);
-        const speedDiv = document.createElement('div');
-        speedDiv.setAttribute('data-name', speedData.name);
-        speedDiv.style.backgroundColor = pressColor;
-
-        const speedElement = document.createElement('span');
-        speedElement.textContent = previousSpeed.toLocaleString();
-
-        speedDiv.innerHTML = `<span class="press-name">${speedData.name}</span>`;
-        speedDiv.appendChild(speedElement);
-        speedContainer.appendChild(speedDiv);
-
-        // Animate the number change
-        animateValue(speedElement, previousSpeed, speedData.speed, 3000); // Slower animation duration
-
-        // Update the previous speed
-        previousSpeeds[speedData.name] = speedData.speed;
-      });
-    }
-
-    // Function to get color based on speed
-    function getColorForSpeed(speed) {
-      if (speed <= 0) {
-        return 'red';
-      } else if (speed >= 300) {
-        return 'lime';
-      } else if (speed >= 200) {
-        return 'yellow';
+      if (currentMinutes >= dayStartMins && currentMinutes < dayEndMins) {
+        shiftName = "Day Shift";
+        shiftStart = new Date(now);
+        shiftStart.setHours(6,0,0,0);
+        shiftEnd = new Date(now);
+        shiftEnd.setHours(16,30,0,0);
       } else {
-        const red = Math.min(255, 255 - Math.floor(speed * 0 / 500));
-        const green = Math.min(255, Math.floor(speed * 655 / 250));
-        return `rgb(${red},${green},0)`;
+        shiftName = "Night Shift";
+        shiftStart = new Date(now);
+        shiftStart.setHours(16,0,0,0);
+
+        shiftEnd = new Date(now);
+        if (currentMinutes >= nightStartMins) {
+          shiftEnd.setDate(shiftEnd.getDate() +1);
+        }
+        shiftEnd.setHours(2,20,0,0);
       }
+      return { shiftName, shiftStart, shiftEnd };
     }
 
-    // Function to get color for press type
-    function getColorForPress(name) {
-      return name === '17 Nilpeter' ? '#1E90FF' :
-             name === '13 Nilpeter' ? '#32CD32' :
-             name === 'ETI' ? '#800080' :
-             name === '18 Aztech' ? '#FFA500' :
-             name === '13 Aztech' ? '#FF4500' :
-             '#0000FF';
-    }
-
-    // Function to update press details
-    function updatePressDetails() {
-      const pressDetails = document.getElementById('pressDetails');
-      const seriesOptions = chart.series.map(series => ({
-        name: series.name,
-        data: series.data.map(point => [point.x, point.y]),
-        downtime: downtimeData[series.name]?.downtime || 0
-      }));
-      const sortedPresses = seriesOptions.sort((a, b) => (b.data[b.data.length - 1]?.[1] || 0) - (a.data[a.data.length - 1]?.[1] || 0));
-
-      const top3Html = sortedPresses.slice(0, 3).map((series, index) => {
-        const rank = index + 1;
-        const rankClass = rank === 1 ? 'gold' : rank === 2 ? 'silver' : rank === 3 ? 'bronze' : 'greyed-out';
-        const previousValue = previousValues[series.name] || 0;
-        const currentValue = series.data[series.data.length - 1]?.[1] || 0;
-        previousValues[series.name] = currentValue;
-        const previousDowntime = previousValues[series.name + '_downtime'] || 0;
-        const currentDowntime = series.downtime;
-        previousValues[series.name + '_downtime'] = currentDowntime;
-        return `
-          <tr class="${rankClass}">
-            <td>${rank <= 3 ? `<span style="font-size: 1.5em;">${rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</span>` : ''}</td>
-            <td>${series.name}</td>
-            <td class="animated-value" data-previous="${previousValue}" data-value="${currentValue}">${currentValue.toLocaleString()}</td>
-            <td class="animated-downtime" data-previous="${previousDowntime}" data-value="${currentDowntime}">${formatDowntime(currentDowntime)}</td>
-          </tr>
-        `;
-      }).join('');
-
-      const bottom3Html = sortedPresses.slice(-3).map((series, index) => {
-        const rank = sortedPresses.length - 2 + index;
-        const previousValue = previousValues[series.name] || 0;
-        const currentValue = series.data[series.data.length - 1]?.[1] || 0;
-        previousValues[series.name] = currentValue;
-        const previousDowntime = previousValues[series.name + '_downtime'] || 0;
-        const currentDowntime = series.downtime;
-        previousValues[series.name + '_downtime'] = currentDowntime;
-        return `
-          <tr class="greyed-out">
-            <td>${rank}</td>
-            <td>${series.name}</td>
-            <td class="animated-value" data-previous="${previousValue}" data-value="${currentValue}">${currentValue.toLocaleString()}</td>
-            <td class="animated-downtime" data-previous="${previousDowntime}" data-value="${currentDowntime}">${formatDowntime(currentDowntime)}</td>
-          </tr>
-        `;
-      }).join('');
-
-      const allPressesHtml = sortedPresses.map((series, index) => {
-        const rank = index + 1;
-        const rankClass = rank <= 3 ? (rank === 1 ? 'gold' : rank === 2 ? 'silver' : 'bronze') : 'greyed-out';
-        const previousValue = previousValues[series.name] || 0;
-        const currentValue = series.data[series.data.length - 1]?.[1] || 0;
-        previousValues[series.name] = currentValue;
-        const previousDowntime = previousValues[series.name + '_downtime'] || 0;
-        const currentDowntime = series.downtime;
-        previousValues[series.name + '_downtime'] = currentDowntime;
-        return `
-          <tr class="${rankClass}">
-            <td>${rank <= 3 ? `<span style="font-size: 1.5em;">${rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}</span>` : rank}</td>
-            <td>${series.name}</td>
-            <td class="animated-value" data-previous="${previousValue}" data-value="${currentValue}">${currentValue.toLocaleString()}</td>
-            <td class="animated-downtime" data-previous="${previousDowntime}" data-value="${currentDowntime}">${formatDowntime(currentDowntime)}</td>
-          </tr>
-        `;
-      }).join('');
-
-      pressDetails.innerHTML = `
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Press</th>
-              <th>Total Distance</th>
-              <th>Downtime (HH:MM:SS)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${cycleState === 'all' ? allPressesHtml : cycleState === 'top3' ? top3Html : bottom3Html}
-          </tbody>
-        </table>
-      `;
-
-      // Animate number changes for the details table
-      document.querySelectorAll('.animated-value').forEach(element => {
-        const previousValue = parseInt(element.getAttribute('data-previous'), 10);
-        const endValue = parseInt(element.getAttribute('data-value'), 10);
-        animateValue(element, previousValue, endValue, 3000); // Slower animation duration
-      });
-
-      // Animate downtime changes for the details table
-      document.querySelectorAll('.animated-downtime').forEach(element => {
-        const previousValue = parseFloat(element.getAttribute('data-previous'));
-        const endValue = parseFloat(element.getAttribute('data-value'));
-        animateValue(element, previousValue, endValue, 3000, formatDowntime); // Slower animation duration
-      });
-
-      // Update the chart to show the top 3 or bottom 3 presses
-      const visiblePresses = cycleState === 'all' ? sortedPresses : cycleState === 'top3' ? sortedPresses.slice(0, 3) : sortedPresses.slice(-3);
-      chart.series.forEach(series => {
-        const isVisible = visiblePresses.some(visible => visible.name === series.name);
-        series.setVisible(isVisible, false);
-      });
-      chart.redraw();
-
-      // Clear existing timeout and set new cycle timeout
-      clearTimeout(cycleTimeout);
-      cycleTimeout = setTimeout(() => {
-        cycleState = cycleState === 'all' ? 'top3' : cycleState === 'top3' ? 'bottom3' : 'all';
-        updatePressDetails();
-      }, cycleState === 'all' ? 30000 : 10000); // 30 seconds for 'all', 10 seconds for 'top3' and 'bottom3'
-    }
-
-    // Function to reset the chart data for a new day
-    function resetChartData() {
-      chartData = {
-        '17 Nilpeter': [],
-        '13 Nilpeter': [],
-        'ETI': [],
-        '18 Aztech': [],
-        '13 Aztech': [],
-        'Slitter': []
-      };
-      renderChart(chartData);
-    }
-
-    // Function to check if a new day has started and reset data if necessary
-    function checkNewDay() {
+    function updateShiftBar() {
+      const { shiftName, shiftStart, shiftEnd } = getCurrentShiftInfo();
       const now = new Date();
-      const startOfDay = getStartOfDay();
-      const endOfDay = getEndOfDay();
 
-      if (now >= endOfDay || now < startOfDay) {
-        resetChartData();
+      const totalMs = shiftEnd - shiftStart;
+      let usedMs = now - shiftStart;
+      if (usedMs < 0) usedMs = 0;
+      if (usedMs > totalMs) usedMs = totalMs;
+
+      const fractionUsed = usedMs / totalMs;
+      const pctUsed = fractionUsed * 100;
+
+      const bar = document.getElementById('shiftProgressBar');
+      bar.style.width = pctUsed.toFixed(2) + '%';
+
+      const remainMs = totalMs - usedMs;
+      const remainMinutes = Math.floor(remainMs / 60000);
+      const remainHours   = Math.floor(remainMinutes / 60);
+      const remainMinOnly = remainMinutes % 60;
+
+      const info = document.getElementById('shiftInfo');
+      if (remainMs <= 0) {
+        info.innerText = `${shiftName}: Shift ended!`;
+      } else {
+        info.innerText = `${shiftName}: ${remainHours}h ${remainMinOnly}m left`;
+      }
+    }
+    updateShiftBar();
+    setInterval(updateShiftBar, 60*1000);
+
+    // --------------------------------------------------------------------------
+    // Chart.js Setup (3 Presses)
+    // --------------------------------------------------------------------------
+    const ctx = document.getElementById('footageChart').getContext('2d');
+    const footageChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: [
+          {
+            label: '17 Nilpeter',
+            data: [],
+            borderColor: '#4CAF50',
+            backgroundColor: 'rgba(76,175,80,0.1)',
+            fill: false,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            borderWidth: 3
+          },
+          {
+            label: '18" Aztech',
+            data: [],
+            borderColor: '#2196F3',
+            backgroundColor: 'rgba(33,150,243,0.1)',
+            fill: false,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            borderWidth: 3
+          },
+          {
+            label: '13 Nilpeter',
+            data: [],
+            borderColor: '#FF9800',
+            backgroundColor: 'rgba(255,152,0,0.1)',
+            fill: false,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            borderWidth: 3
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+          duration: 600,
+          easing: 'easeOutCubic'
+        },
+        plugins: {
+          legend: { display: true, position: 'top' },
+          title:  { display: false }
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: { unit: 'hour' }
+          },
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    // -2 Hour Offset
+    const offsetHours = -2;
+    const offsetMs = offsetHours * 3600 * 1000;
+
+    // --------------------------------------------------------------------------
+    // Animate Number (15-second default)
+    // --------------------------------------------------------------------------
+    function animateNumber(elem, start, end, duration=15000) {
+      const startTime = performance.now();
+      function tick(now) {
+        const progress = (now - startTime) / duration;
+        if (progress < 1) {
+          const currentVal = start + (end - start) * progress;
+          elem.innerText = Math.round(currentVal).toLocaleString();
+          requestAnimationFrame(tick);
+        } else {
+          elem.innerText = Math.round(end).toLocaleString();
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function getSpeedColor(speed) {
+      if (speed <= 50)  return '#ff0000';
+      if (speed >= 300) return '#00ff00';
+      return '#ffa500';
+    }
+
+    // --------------------------------------------------------------------------
+    // Current Speed: Halve for 13 Nilpeter
+    // --------------------------------------------------------------------------
+    function updateCurrentSpeed(pressId, rawSpeed) {
+      const speedElem = document.getElementById('currentSpeed_'+pressId);
+      const speedBox  = document.getElementById('speedBox_'+pressId);
+      const stoppedW  = document.getElementById('stopped_'+pressId);
+      if (!speedElem || !speedBox || !stoppedW) return;
+
+      // Halve if 13 Nilpeter
+      let displaySpeed = parseFloat(rawSpeed) || 0;
+      if (pressId === 'nilpeter13') {
+        displaySpeed /= 2;
+      }
+
+      const oldVal = parseFloat(speedElem.dataset.oldValue) || 0;
+      animateNumber(speedElem, oldVal, displaySpeed);
+      speedElem.dataset.oldValue = displaySpeed;
+
+      // color
+      const color = getSpeedColor(displaySpeed);
+      speedBox.style.borderColor = color;
+
+      // STOPPED
+      if (displaySpeed === 0) {
+        stoppedW.classList.remove('hidden');
+      } else {
+        stoppedW.classList.add('hidden');
+      }
+
+      // slow if < 70
+      if (displaySpeed>0 && displaySpeed<70) {
+        speedBox.classList.add('slow-speed');
+      } else {
+        speedBox.classList.remove('slow-speed');
       }
     }
 
-    // Function to add new data points to the existing series
-    function addDataPoints() {
-      const now = Date.now();
-      const seriesNames = Object.keys(chartData);
+    // --------------------------------------------------------------------------
+    // Press Footages => used for net production & sorting
+    // --------------------------------------------------------------------------
+    const pressFootages = {
+      nilpeter: 0,
+      aztech: 0,
+      nilpeter13: 0
+    };
+    const GOAL = 300000;
 
-      seriesNames.forEach(name => {
-        const newData = chartData[name].filter(point => point[0] >= now - 60000); // Get data from the last minute
-        const series = chart.series.find(s => s.name === name);
-        if (series) {
-          newData.forEach(point => {
-            series.addPoint(point, false, false);
-          });
+    function updateNetProduction() {
+      const sum   = pressFootages.nilpeter + pressFootages.aztech + pressFootages.nilpeter13;
+      const waste = sum*0.03;
+      const net   = sum - waste;
+
+      // Animate net production
+      const netElem = document.getElementById('netProduction');
+      if (netElem) {
+        const oldNet = parseFloat(netElem.dataset.oldValue) || 0;
+        animateNumber(netElem, oldNet, net);
+        netElem.dataset.oldValue = net;
+      }
+
+      // Animate % of goal
+      const percElem = document.getElementById('goalPercentage');
+      if (percElem) {
+        const oldPerc = parseFloat(percElem.dataset.oldValue) || 0;
+        const newPerc = (net / GOAL)*100;
+        animateNumber(percElem, oldPerc, newPerc);
+        percElem.dataset.oldValue = newPerc;
+      }
+
+      // Fill the bar
+      const barNet   = document.getElementById('goalNet');
+      const barWaste = document.getElementById('goalWaste');
+      if (!barNet || !barWaste) return;
+
+      if (net<=0) {
+        barNet.style.width   = '0%';
+        barWaste.style.width = '0%';
+        return;
+      }
+      const fillPct = Math.min(1, net/GOAL)*100;
+      const greenPct = fillPct*0.97;
+      const redPct   = fillPct*0.03;
+
+      barNet.style.width = greenPct.toFixed(2)+'%';
+      barWaste.style.left  = greenPct.toFixed(2)+'%';
+      barWaste.style.width = redPct.toFixed(2)+'%';
+    }
+
+    function reorderPressBoxes() {
+      const data = [
+        { pressId:'nilpeter',   footage: pressFootages.nilpeter,   boxId:'speedBox_nilpeter',   iconId:'placementIcon_nilpeter'   },
+        { pressId:'aztech',     footage: pressFootages.aztech,     boxId:'speedBox_aztech',     iconId:'placementIcon_aztech'     },
+        { pressId:'nilpeter13', footage: pressFootages.nilpeter13, boxId:'speedBox_nilpeter13', iconId:'placementIcon_nilpeter13' }
+      ];
+      data.sort((a,b)=>b.footage - a.footage);
+
+      const container = document.querySelector('.speed-containers');
+      data.forEach(item=>{
+        const boxElem = document.getElementById(item.boxId);
+        if(boxElem) container.appendChild(boxElem);
+      });
+
+      data.forEach((item,idx)=>{
+        const iconElem = document.getElementById(item.iconId);
+        if(!iconElem) return;
+        iconElem.textContent = '';
+        if(idx===0 && item.footage>0) {
+          iconElem.textContent='🏆';
+        } else if(idx===1 && item.footage>0) {
+          iconElem.textContent='🥈';
+        } else if(idx===2 && item.footage>0) {
+          iconElem.textContent='🥉';
         }
       });
-
-      chart.redraw();
-      updatePressDetails();
     }
 
-    // Fetch initial data
-    fetchData();
-    setInterval(fetchCurrentSpeeds, 5000); // Fetch current speeds every 5 seconds
-    setInterval(addDataPoints, 60000); // Add data points every minute
-    setInterval(checkNewDay, 60000); // Check if a new day has started every minute
+    function updateFootage(pressId,newFootage) {
+      const footageElem=document.getElementById('totalFootage_'+pressId);
+      if(!footageElem) return;
 
+      const oldVal = parseFloat(footageElem.dataset.oldValue)||0;
+      const newVal = parseFloat(newFootage)||0;
+      animateNumber(footageElem, oldVal, newVal);
+      footageElem.dataset.oldValue = newVal;
+
+      pressFootages[pressId]=newVal;
+
+      updateNetProduction();
+      reorderPressBoxes();
+    }
+
+    // --------------------------------------------------------------------------
+    // 5) daily_footage => chart (Halve for 13 Nilpeter)
+    // --------------------------------------------------------------------------
+    function setupDailyFootageListener(pressPath,datasetIndex,pressId) {
+      firebase.database().ref(`${pressPath}/daily_footage`).on('value',(snapshot)=>{
+        const data=snapshot.val();
+        if(!data) {
+          footageChart.data.datasets[datasetIndex].data=[];
+          footageChart.update();
+          updateFootage(pressId,0);
+          return;
+        }
+        let records=[];
+        if(typeof data==='object' && !Array.isArray(data)) {
+          for(let key in data){
+            if(Object.prototype.hasOwnProperty.call(data,key)) {
+              records.push(data[key]);
+            }
+          }
+        } else {
+          records=Array.isArray(data)?data:[data];
+        }
+        records.sort((a,b)=>Number(a.timestamp)-Number(b.timestamp));
+
+        let cumulative=0;
+        const chartData=records.map(r=>{
+          const rawMs = Number(r.timestamp)*1000;
+          const correctedMs = rawMs+offsetMs;
+
+          // Halve if 13 Nilpeter
+          if(pressId==='nilpeter13') {
+            cumulative += (Number(r.footageSinceLastSend)||0)/2;
+          } else {
+            cumulative += Number(r.footageSinceLastSend)||0;
+          }
+          return {x:new Date(correctedMs),y:cumulative};
+        });
+
+        footageChart.data.datasets[datasetIndex].data=chartData;
+        footageChart.update();
+
+        updateFootage(pressId,cumulative);
+      });
+    }
+
+    // --------------------------------------------------------------------------
+    // 6) current_speed => Halve for 13 Nilpeter
+    // --------------------------------------------------------------------------
+    function setupCurrentSpeedListener(pressPath,pressId){
+      firebase.database().ref(`${pressPath}/current_speed`).on('value',(snapshot)=>{
+        const data=snapshot.val();
+        if(data && data.currentSpeed!==undefined) {
+          // Halve speed if 13 Nilpeter
+          let speedVal=Number(data.currentSpeed)||0;
+          if(pressId==='nilpeter13'){
+            speedVal /=2;
+          }
+          updateCurrentSpeed(pressId,speedVal);
+        }
+      });
+    }
+
+    // --------------------------------------------------------------------------
+    // 7) Wire up 3 presses
+    // --------------------------------------------------------------------------
+    setupDailyFootageListener('TEST_PRESS_001',0,'nilpeter');
+    setupCurrentSpeedListener('TEST_PRESS_001','nilpeter');
+
+    setupDailyFootageListener('TEST_PRESS_002',1,'aztech');
+    setupCurrentSpeedListener('TEST_PRESS_002','aztech');
+
+    setupDailyFootageListener('TEST_PRESS_003',2,'nilpeter13');
+    setupCurrentSpeedListener('TEST_PRESS_003','nilpeter13');
   </script>
 </body>
 </html>
+
