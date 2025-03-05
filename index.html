@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>All-In-One Dashboard: Halved 13 Nilpeter (Speed + Footage), 15s Animations</title>
+  <title>All-In-One Dashboard: Conic Swirl + White STOPPED + Animated Box</title>
   <!-- Load Chart.js from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Firebase SDK -->
@@ -63,17 +63,50 @@
        2) Speed Boxes, STOPPED, Slow Speed
        ---------------------------------------------------------- */
     .speed-box {
+      /* We'll do a conic swirl from custom properties 
+         plus a swirl animation if data-swirl="true". 
+      */
       border: 2.5px solid #4CAF50;
       border-radius: 8px;
-      padding: 10px 15px;
-      background-color: #fff;
+      padding: 7px 9px;
+      background-color: #fff;  /* We'll override with conic gradient below. */
       text-align: left;
       font-size: 1.2em;
       font-weight: bold;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      transition: border-color 0.5s linear;
-      position: relative; 
+      transition: 
+        border-color 0.5s linear, 
+        background 1s linear; /* Animate background changes smoothly */
+      position: relative;
+
+      /* We'll rely on custom properties 
+         --swirlAngle (0..360deg) 
+         --cStop1, --cStop2, --cStop3 for the color stops
+      */
+      background: conic-gradient(
+        from 0deg at 50% 50%,
+        red 0deg,
+        orange 120deg,
+        yellow 240deg,
+        red 360deg
+      );
     }
+
+    .speed-box[data-swirl="true"] {
+      /* The swirl angle is updated by animation swirlBox 
+         We read color stops from 
+         --cStop1, --cStop2, --cStop3 
+      */
+      background: conic-gradient(
+        from var(--swirlAngle, 0deg) at 50% 50%,
+        var(--cStop1, red) 0deg,
+        var(--cStop2, orange) 120deg,
+        var(--cStop3, yellow) 240deg,
+        var(--cStop1, red) 360deg
+      );
+      animation: swirlBox 5s linear infinite;
+    }
+
     .speed-box h2 {
       margin: 0 0 10px;
       font-size: 1.6em;
@@ -83,7 +116,7 @@
       margin: 0 5px;
     }
     .stopped-warning {
-      color: red;
+      color: #fff;  /* White STOPPED sign */
       font-size: 1.3em;
       font-weight: 800;
       margin-top: 10px;
@@ -111,6 +144,27 @@
       top: 10px;
       right: 10px;
       font-size: 1.8em;
+    }
+
+    .avg-fpm {
+      margin-top: 8px;
+      font-size: 1.2em;
+      font-weight: normal;
+      color: #333;
+    }
+
+    /*
+      We'll define an @property for the swirl angle 
+      so the animation can modify it smoothly.
+    */
+    @property --swirlAngle {
+      syntax: "<angle>";
+      inherits: false;
+      initial-value: 0deg;
+    }
+
+    @keyframes swirlBox {
+      to { --swirlAngle: 360deg; }
     }
 
     /* ----------------------------------------------------------
@@ -159,23 +213,21 @@
       top: 0;
       left: 0;
       height: 100%;
-      background-color: #4CAF50; /* net portion */
+      background-color: #4CAF50;
       transition: width 0.6s;
     }
     .goal-waste {
       position: absolute;
       top: 0;
       height: 100%;
-      background-color: #F44336; /* 3% slice */
+      background-color: #F44336;
       transition: width 0.6s;
     }
-
-    /* Net Production & % of goal info */
     .net-info {
       text-align: center;
       margin-top: -10px;
       margin-bottom: 20px;
-      font-size: 1.2em;
+      font-size: 3em;
       font-weight: bold;
     }
   </style>
@@ -215,12 +267,16 @@
       <div class="speed-box" id="speedBox_nilpeter">
         <h2>17 Nilpeter</h2>
         <div class="placement-icon" id="placementIcon_nilpeter"></div>
+        
         <div>Speed: 
           <span class="metric-value" id="currentSpeed_nilpeter" data-old-value="0">0</span> ft/min
         </div>
         <div>Footage:
           <span class="metric-value" id="totalFootage_nilpeter" data-old-value="0">0</span> ft
         </div>
+
+        <div class="avg-fpm" id="avgFpm_nilpeter">Avg: 0 ft/min</div>
+
         <div class="stopped-warning hidden" id="stopped_nilpeter">STOPPED</div>
       </div>
 
@@ -228,12 +284,16 @@
       <div class="speed-box" id="speedBox_aztech">
         <h2>18" Aztech</h2>
         <div class="placement-icon" id="placementIcon_aztech"></div>
+        
         <div>Speed:
           <span class="metric-value" id="currentSpeed_aztech" data-old-value="0">0</span> ft/min
         </div>
         <div>Footage:
           <span class="metric-value" id="totalFootage_aztech" data-old-value="0">0</span> ft
         </div>
+
+        <div class="avg-fpm" id="avgFpm_aztech">Avg: 0 ft/min</div>
+
         <div class="stopped-warning hidden" id="stopped_aztech">STOPPED</div>
       </div>
 
@@ -241,12 +301,16 @@
       <div class="speed-box" id="speedBox_nilpeter13">
         <h2>13 Nilpeter</h2>
         <div class="placement-icon" id="placementIcon_nilpeter13"></div>
+        
         <div>Speed:
           <span class="metric-value" id="currentSpeed_nilpeter13" data-old-value="0">0</span> ft/min
         </div>
         <div>Footage:
           <span class="metric-value" id="totalFootage_nilpeter13" data-old-value="0">0</span> ft
         </div>
+
+        <div class="avg-fpm" id="avgFpm_nilpeter13">Avg: 0 ft/min</div>
+
         <div class="stopped-warning hidden" id="stopped_nilpeter13">STOPPED</div>
       </div>
 
@@ -255,7 +319,7 @@
 
   <script>
     // --------------------------------------------------------------------------
-    // Firebase config
+    // 1) Firebase config
     // --------------------------------------------------------------------------
     var firebaseConfig = {
       apiKey: "YOUR_API_KEY",
@@ -268,312 +332,349 @@
     };
     firebase.initializeApp(firebaseConfig);
 
-    // --------------------------------------------------------------------------
-    // SHIFT BAR LOGIC
-    // --------------------------------------------------------------------------
-    function getCurrentShiftInfo() {
-      const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-      const dayStartMins = 6 * 60;
-      const dayEndMins   = 16 * 60 + 30;
-      const nightStartMins = 16 * 60;
-      const nightEndMins   = 2 * 60 + 20;
-
+    // SHIFT BAR
+    function getCurrentShiftInfo(){
+      const now=new Date();
+      const cm= now.getHours()*60 + now.getMinutes();
+      const ds=6*60, de=16*60+30, ns=16*60, ne=2*60+20;
       let shiftName, shiftStart, shiftEnd;
 
-      if (currentMinutes >= dayStartMins && currentMinutes < dayEndMins) {
-        shiftName = "Day Shift";
-        shiftStart = new Date(now);
-        shiftStart.setHours(6,0,0,0);
-        shiftEnd = new Date(now);
-        shiftEnd.setHours(16,30,0,0);
+      if(cm>=ds && cm<de){
+        shiftName="Day Shift";
+        shiftStart=new Date(now); shiftStart.setHours(6,0,0,0);
+        shiftEnd=new Date(now);   shiftEnd.setHours(16,30,0,0);
       } else {
-        shiftName = "Night Shift";
-        shiftStart = new Date(now);
-        shiftStart.setHours(16,0,0,0);
-
-        shiftEnd = new Date(now);
-        if (currentMinutes >= nightStartMins) {
-          shiftEnd.setDate(shiftEnd.getDate() +1);
-        }
+        shiftName="Night Shift";
+        shiftStart=new Date(now); shiftStart.setHours(16,0,0,0);
+        shiftEnd=new Date(now);
+        if(cm>=ns) shiftEnd.setDate(shiftEnd.getDate()+1);
         shiftEnd.setHours(2,20,0,0);
       }
-      return { shiftName, shiftStart, shiftEnd };
+      return{shiftName,shiftStart,shiftEnd};
     }
+    function updateShiftBar(){
+      const{shiftName,shiftStart,shiftEnd}= getCurrentShiftInfo();
+      const now=new Date();
+      const totalMs=shiftEnd - shiftStart;
+      let usedMs= now - shiftStart;
+      if(usedMs<0) usedMs=0;
+      if(usedMs>totalMs)usedMs=totalMs;
 
-    function updateShiftBar() {
-      const { shiftName, shiftStart, shiftEnd } = getCurrentShiftInfo();
-      const now = new Date();
+      const fractionUsed=usedMs/totalMs;
+      const pctUsed=(fractionUsed*100).toFixed(2);
 
-      const totalMs = shiftEnd - shiftStart;
-      let usedMs = now - shiftStart;
-      if (usedMs < 0) usedMs = 0;
-      if (usedMs > totalMs) usedMs = totalMs;
+      const bar=document.getElementById('shiftProgressBar');
+      bar.style.width= pctUsed+'%';
 
-      const fractionUsed = usedMs / totalMs;
-      const pctUsed = fractionUsed * 100;
+      const remainMs=totalMs-usedMs;
+      const remainMin=Math.floor(remainMs/60000);
+      const remainH= Math.floor(remainMin/60);
+      const remainOnly= remainMin%60;
 
-      const bar = document.getElementById('shiftProgressBar');
-      bar.style.width = pctUsed.toFixed(2) + '%';
-
-      const remainMs = totalMs - usedMs;
-      const remainMinutes = Math.floor(remainMs / 60000);
-      const remainHours   = Math.floor(remainMinutes / 60);
-      const remainMinOnly = remainMinutes % 60;
-
-      const info = document.getElementById('shiftInfo');
-      if (remainMs <= 0) {
-        info.innerText = `${shiftName}: Shift ended!`;
+      const info=document.getElementById('shiftInfo');
+      if(remainMs<=0){
+        info.innerText=`${shiftName}: Shift ended!`;
       } else {
-        info.innerText = `${shiftName}: ${remainHours}h ${remainMinOnly}m left`;
+        info.innerText=`${shiftName}: ${remainH}h ${remainOnly}m left`;
       }
     }
     updateShiftBar();
-    setInterval(updateShiftBar, 60*1000);
+    setInterval(updateShiftBar,60000);
 
-    // --------------------------------------------------------------------------
-    // Chart.js Setup (3 Presses)
-    // --------------------------------------------------------------------------
-    const ctx = document.getElementById('footageChart').getContext('2d');
-    const footageChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        datasets: [
+    // Chart.js
+    const ctx=document.getElementById('footageChart').getContext('2d');
+    const footageChart=new Chart(ctx,{
+      type:'line',
+      data:{
+        datasets:[
           {
-            label: '17 Nilpeter',
-            data: [],
-            borderColor: '#4CAF50',
-            backgroundColor: 'rgba(76,175,80,0.1)',
-            fill: false,
-            tension: 0.4,
-            pointRadius: 0,
-            pointHoverRadius: 0,
-            borderWidth: 3
+            label:'17 Nilpeter',
+            data:[],
+            borderColor:'#4CAF50',
+            backgroundColor:'rgba(76,175,80,0.1)',
+            fill:false,
+            tension:0.4,
+            pointRadius:0,
+            pointHoverRadius:0,
+            borderWidth:5
           },
           {
-            label: '18" Aztech',
-            data: [],
-            borderColor: '#2196F3',
-            backgroundColor: 'rgba(33,150,243,0.1)',
-            fill: false,
-            tension: 0.4,
-            pointRadius: 0,
-            pointHoverRadius: 0,
-            borderWidth: 3
+            label:'18" Aztech',
+            data:[],
+            borderColor:'#2196F3',
+            backgroundColor:'rgba(33,150,243,0.1)',
+            fill:false,
+            tension:0.4,
+            pointRadius:0,
+            pointHoverRadius:0,
+            borderWidth:5
           },
           {
-            label: '13 Nilpeter',
-            data: [],
-            borderColor: '#FF9800',
-            backgroundColor: 'rgba(255,152,0,0.1)',
-            fill: false,
-            tension: 0.4,
-            pointRadius: 0,
-            pointHoverRadius: 0,
-            borderWidth: 3
+            label:'13 Nilpeter',
+            data:[],
+            borderColor:'#FF9800',
+            backgroundColor:'rgba(255,152,0,0.1)',
+            fill:false,
+            tension:0.4,
+            pointRadius:0,
+            pointHoverRadius:0,
+            borderWidth:5
           }
         ]
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: {
-          duration: 600,
-          easing: 'easeOutCubic'
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        animation:{duration:600,easing:'easeOutCubic'},
+        plugins:{
+          legend:{display:true,position:'top'},
+          title:{display:false}
         },
-        plugins: {
-          legend: { display: true, position: 'top' },
-          title:  { display: false }
-        },
-        scales: {
-          x: {
-            type: 'time',
-            time: { unit: 'hour' }
-          },
-          y: { beginAtZero: true }
+        scales:{
+          x:{type:'time',time:{unit:'hour'}},
+          y:{beginAtZero:true}
         }
       }
     });
 
-    // -2 Hour Offset
-    const offsetHours = -2;
-    const offsetMs = offsetHours * 3600 * 1000;
+    // -2 offset
+    const offsetHours=-2;
+    const offsetMs= offsetHours*3600*1000;
 
-    // --------------------------------------------------------------------------
-    // Animate Number (15-second default)
-    // --------------------------------------------------------------------------
-    function animateNumber(elem, start, end, duration=15000) {
-      const startTime = performance.now();
-      function tick(now) {
-        const progress = (now - startTime) / duration;
-        if (progress < 1) {
-          const currentVal = start + (end - start) * progress;
-          elem.innerText = Math.round(currentVal).toLocaleString();
+    // animateNumber => 15-second transitions
+    function animateNumber(elem, start, end, duration=15000){
+      const startTime=performance.now();
+      function tick(now){
+        const progress=(now - startTime)/duration;
+        if(progress<1){
+          const currentVal=start+(end-start)*progress;
+          elem.innerText=Math.round(currentVal).toLocaleString();
           requestAnimationFrame(tick);
         } else {
-          elem.innerText = Math.round(end).toLocaleString();
+          elem.innerText=Math.round(end).toLocaleString();
         }
       }
       requestAnimationFrame(tick);
     }
 
-    function getSpeedColor(speed) {
-      if (speed <= 50)  return '#ff0000';
-      if (speed >= 300) return '#00ff00';
-      return '#ffa500';
+    // Speed color
+    function getSpeedColor(speed){
+      if(speed<=50)return'#ff0000';
+      if(speed>=300)return'#00ff00';
+      return'#ffa500';
     }
 
-    // --------------------------------------------------------------------------
-    // Current Speed: Halve for 13 Nilpeter
-    // --------------------------------------------------------------------------
-    function updateCurrentSpeed(pressId, rawSpeed) {
-      const speedElem = document.getElementById('currentSpeed_'+pressId);
-      const speedBox  = document.getElementById('speedBox_'+pressId);
-      const stoppedW  = document.getElementById('stopped_'+pressId);
-      if (!speedElem || !speedBox || !stoppedW) return;
+    // update speed (Halve for 13 Nilpeter)
+    function updateCurrentSpeed(pressId, rawSpeed){
+      const speedElem=document.getElementById('currentSpeed_'+pressId);
+      const speedBox=document.getElementById('speedBox_'+pressId);
+      const stoppedW=document.getElementById('stopped_'+pressId);
+      if(!speedElem||!speedBox||!stoppedW)return;
 
-      // Halve if 13 Nilpeter
-      let displaySpeed = parseFloat(rawSpeed) || 0;
-      if (pressId === 'nilpeter13') {
-        
-        //13 nilpeter hardware was double counting I fixed for the time being 3/4/25 - Jesse
-        //displaySpeed /= 2;
+      let displaySpeed=parseFloat(rawSpeed)||0;
+      if(pressId==='nilpeter13'){
+        displaySpeed/=2;
       }
-
-      const oldVal = parseFloat(speedElem.dataset.oldValue) || 0;
+      const oldVal=parseFloat(speedElem.dataset.oldValue)||0;
       animateNumber(speedElem, oldVal, displaySpeed);
-      speedElem.dataset.oldValue = displaySpeed;
+      speedElem.dataset.oldValue=displaySpeed;
 
-      // color
-      const color = getSpeedColor(displaySpeed);
-      speedBox.style.borderColor = color;
+      // border color
+      const color=getSpeedColor(displaySpeed);
+      speedBox.style.borderColor=color;
 
       // STOPPED
-      if (displaySpeed === 0) {
+      if(displaySpeed===0){
         stoppedW.classList.remove('hidden');
       } else {
         stoppedW.classList.add('hidden');
       }
-
-      // slow if < 70
-      if (displaySpeed>0 && displaySpeed<70) {
+      // slow if <70
+      if(displaySpeed>0 && displaySpeed<70){
         speedBox.classList.add('slow-speed');
       } else {
         speedBox.classList.remove('slow-speed');
       }
     }
 
-    // --------------------------------------------------------------------------
-    // Press Footages => used for net production & sorting
-    // --------------------------------------------------------------------------
-    const pressFootages = {
-      nilpeter: 0,
-      aztech: 0,
-      nilpeter13: 0
+    // track footage => net => sorting
+    const pressFootages={
+      nilpeter:0,
+      aztech:0,
+      nilpeter13:0
     };
-    const GOAL = 300000;
+    const GOAL=300000;
 
-    function updateNetProduction() {
-      const sum   = pressFootages.nilpeter + pressFootages.aztech + pressFootages.nilpeter13;
-      const waste = sum*0.03;
-      const net   = sum - waste;
+    function updateNetProduction(){
+      const sum= pressFootages.nilpeter + pressFootages.aztech + pressFootages.nilpeter13;
+      const waste=sum*0.03;
+      const net=sum-waste;
 
-      // Animate net production
-      const netElem = document.getElementById('netProduction');
-      if (netElem) {
-        const oldNet = parseFloat(netElem.dataset.oldValue) || 0;
+      const netElem=document.getElementById('netProduction');
+      if(netElem){
+        const oldNet=parseFloat(netElem.dataset.oldValue)||0;
         animateNumber(netElem, oldNet, net);
-        netElem.dataset.oldValue = net;
+        netElem.dataset.oldValue=net;
       }
 
-      // Animate % of goal
-      const percElem = document.getElementById('goalPercentage');
-      if (percElem) {
-        const oldPerc = parseFloat(percElem.dataset.oldValue) || 0;
-        const newPerc = (net / GOAL)*100;
+      const percElem=document.getElementById('goalPercentage');
+      if(percElem){
+        const oldPerc=parseFloat(percElem.dataset.oldValue)||0;
+        const newPerc=(net/GOAL)*100;
         animateNumber(percElem, oldPerc, newPerc);
-        percElem.dataset.oldValue = newPerc;
+        percElem.dataset.oldValue=newPerc;
       }
 
-      // Fill the bar
-      const barNet   = document.getElementById('goalNet');
-      const barWaste = document.getElementById('goalWaste');
-      if (!barNet || !barWaste) return;
-
-      if (net<=0) {
-        barNet.style.width   = '0%';
-        barWaste.style.width = '0%';
+      // fill bar
+      const barNet=document.getElementById('goalNet');
+      const barWaste=document.getElementById('goalWaste');
+      if(!barNet||!barWaste)return;
+      if(net<=0){
+        barNet.style.width='0%';
+        barWaste.style.width='0%';
         return;
       }
-      const fillPct = Math.min(1, net/GOAL)*100;
-      const greenPct = fillPct*0.97;
-      const redPct   = fillPct*0.03;
-
-      barNet.style.width = greenPct.toFixed(2)+'%';
-      barWaste.style.left  = greenPct.toFixed(2)+'%';
-      barWaste.style.width = redPct.toFixed(2)+'%';
+      const fillPct=Math.min(1, net/GOAL)*100;
+      const greenPct=fillPct*0.97;
+      const redPct=fillPct*0.03;
+      barNet.style.width=greenPct.toFixed(2)+'%';
+      barWaste.style.left=greenPct.toFixed(2)+'%';
+      barWaste.style.width=redPct.toFixed(2)+'%';
     }
 
-    function reorderPressBoxes() {
-      const data = [
-        { pressId:'nilpeter',   footage: pressFootages.nilpeter,   boxId:'speedBox_nilpeter',   iconId:'placementIcon_nilpeter'   },
-        { pressId:'aztech',     footage: pressFootages.aztech,     boxId:'speedBox_aztech',     iconId:'placementIcon_aztech'     },
-        { pressId:'nilpeter13', footage: pressFootages.nilpeter13, boxId:'speedBox_nilpeter13', iconId:'placementIcon_nilpeter13' }
+    // reorder & trophies
+    function reorderPressBoxes(){
+      const data=[
+        { pressId:'nilpeter',   footage:pressFootages.nilpeter,   boxId:'speedBox_nilpeter',   iconId:'placementIcon_nilpeter'},
+        { pressId:'aztech',     footage:pressFootages.aztech,     boxId:'speedBox_aztech',     iconId:'placementIcon_aztech'},
+        { pressId:'nilpeter13', footage:pressFootages.nilpeter13, boxId:'speedBox_nilpeter13', iconId:'placementIcon_nilpeter13'},
       ];
       data.sort((a,b)=>b.footage - a.footage);
 
-      const container = document.querySelector('.speed-containers');
+      const container=document.querySelector('.speed-containers');
       data.forEach(item=>{
-        const boxElem = document.getElementById(item.boxId);
+        const boxElem=document.getElementById(item.boxId);
         if(boxElem) container.appendChild(boxElem);
       });
 
       data.forEach((item,idx)=>{
-        const iconElem = document.getElementById(item.iconId);
-        if(!iconElem) return;
-        iconElem.textContent = '';
-        if(idx===0 && item.footage>0) {
+        const iconElem=document.getElementById(item.iconId);
+        if(!iconElem)return;
+        iconElem.textContent='';
+        if(idx===0 && item.footage>0){
           iconElem.textContent='🏆';
-        } else if(idx===1 && item.footage>0) {
+        } else if(idx===1 && item.footage>0){
           iconElem.textContent='🥈';
-        } else if(idx===2 && item.footage>0) {
+        } else if(idx===2 && item.footage>0){
           iconElem.textContent='🥉';
         }
       });
     }
 
-    function updateFootage(pressId,newFootage) {
-      const footageElem=document.getElementById('totalFootage_'+pressId);
-      if(!footageElem) return;
+    /* 
+       We'll do a conic swirl for the entire box, 
+       picking color stops by threshold. 
+       We'll also add data-swirl="true" to enable the swirl animation 
+       via the CSS keyframes swirlBox => it increments --swirlAngle.
+    */
+    function setBoxAverageBackground(pressId, avgValue){
+      const boxElem=document.getElementById('speedBox_'+pressId);
+      if(!boxElem)return;
 
-      const oldVal = parseFloat(footageElem.dataset.oldValue)||0;
-      const newVal = parseFloat(newFootage)||0;
+      // define 3 color stops
+      let c1,c2,c3;
+      if(avgValue<=20){
+        // intense reds
+        c1='#ff0000';
+        c2='#ff4d4d';
+        c3='#ff1a1a';
+      } else if(avgValue<=50){
+        // bright yellows
+        c1='#ffff00';
+        c2='#ffd700';
+        c3='#fffc85';
+      } else if(avgValue<=100){
+        // normal green swirl
+        c1='#00ff00';
+        c2='#32cd32';
+        c3='#00ff00';
+      } else {
+        // neon bright green
+        c1='#00ff7f';
+        c2='#00ffe0';
+        c3='#00ff40';
+      }
+
+      // We'll store these color stops as custom props 
+      // then rely on the CSS .speed-box[data-swirl="true"] to read them
+      boxElem.style.setProperty('--cStop1', c1);
+      boxElem.style.setProperty('--cStop2', c2);
+      boxElem.style.setProperty('--cStop3', c3);
+
+      // set data-swirl => triggers swirl animation in CSS
+      boxElem.setAttribute('data-swirl','true');
+    }
+
+    function computeAndDisplayAvgFpm(pressId, records, cumulativeFootage){
+      const avgElem=document.getElementById('avgFpm_'+pressId);
+      if(!avgElem) return;
+
+      if(!records || records.length<2){
+        avgElem.innerText='Avg: 0 ft/min';
+        setBoxAverageBackground(pressId, 0);
+        return;
+      }
+      const firstTs=Number(records[0].timestamp);
+      const lastTs=Number(records[records.length-1].timestamp);
+
+      const totalSec= lastTs - firstTs;
+      const totalMin= totalSec/60;
+      if(totalMin<=0){
+        avgElem.innerText='Avg: 0 ft/min';
+        setBoxAverageBackground(pressId, 0);
+        return;
+      }
+
+      const avgFpm= cumulativeFootage / totalMin;
+      const r=Math.round(avgFpm).toLocaleString();
+      avgElem.innerText=`Avg: ${r} ft/min`;
+
+      // swirl the entire box
+      setBoxAverageBackground(pressId, avgFpm);
+    }
+
+    function updateFootage(pressId, newFootage, records){
+      const footageElem=document.getElementById('totalFootage_'+pressId);
+      if(!footageElem)return;
+
+      const oldVal=parseFloat(footageElem.dataset.oldValue)||0;
+      const newVal=parseFloat(newFootage)||0;
       animateNumber(footageElem, oldVal, newVal);
-      footageElem.dataset.oldValue = newVal;
+      footageElem.dataset.oldValue=newVal;
 
       pressFootages[pressId]=newVal;
 
       updateNetProduction();
       reorderPressBoxes();
+
+      // compute average => swirl entire box
+      computeAndDisplayAvgFpm(pressId, records, newVal);
     }
 
-    // --------------------------------------------------------------------------
-    // 5) daily_footage => chart (Halve for 13 Nilpeter)
-    // --------------------------------------------------------------------------
-    function setupDailyFootageListener(pressPath,datasetIndex,pressId) {
+    // daily_footage => chart + Halve 13
+    function setupDailyFootageListener(pressPath, datasetIndex, pressId){
       firebase.database().ref(`${pressPath}/daily_footage`).on('value',(snapshot)=>{
         const data=snapshot.val();
-        if(!data) {
+        if(!data){
           footageChart.data.datasets[datasetIndex].data=[];
           footageChart.update();
-          updateFootage(pressId,0);
+          updateFootage(pressId, 0, []);
           return;
         }
         let records=[];
-        if(typeof data==='object' && !Array.isArray(data)) {
+        if(typeof data==='object' && !Array.isArray(data)){
           for(let key in data){
-            if(Object.prototype.hasOwnProperty.call(data,key)) {
+            if(Object.prototype.hasOwnProperty.call(data,key)){
               records.push(data[key]);
             }
           }
@@ -584,45 +685,39 @@
 
         let cumulative=0;
         const chartData=records.map(r=>{
-          const rawMs = Number(r.timestamp)*1000;
-          const correctedMs = rawMs+offsetMs;
+          const rawMs=Number(r.timestamp)*1000;
+          const correctedMs= rawMs+ offsetMs;
 
-          // Halve if 13 Nilpeter
-          if(pressId==='nilpeter13') {
-            cumulative += (Number(r.footageSinceLastSend)||0)/2;
+          if(pressId==='nilpeter13'){
+            cumulative+=(Number(r.footageSinceLastSend)||0)/2;
           } else {
-            cumulative += Number(r.footageSinceLastSend)||0;
+            cumulative+=(Number(r.footageSinceLastSend)||0);
           }
-          return {x:new Date(correctedMs),y:cumulative};
+          return { x:new Date(correctedMs), y:cumulative };
         });
 
         footageChart.data.datasets[datasetIndex].data=chartData;
         footageChart.update();
 
-        updateFootage(pressId,cumulative);
+        updateFootage(pressId, cumulative, records);
       });
     }
 
-    // --------------------------------------------------------------------------
-    // 6) current_speed => Halve for 13 Nilpeter
-    // --------------------------------------------------------------------------
-    function setupCurrentSpeedListener(pressPath,pressId){
+    // current_speed => Halve 13
+    function setupCurrentSpeedListener(pressPath, pressId){
       firebase.database().ref(`${pressPath}/current_speed`).on('value',(snapshot)=>{
         const data=snapshot.val();
-        if(data && data.currentSpeed!==undefined) {
-          // Halve speed if 13 Nilpeter
-          let speedVal=Number(data.currentSpeed)||0;
+        if(data && data.currentSpeed!==undefined){
+          let speedVal= Number(data.currentSpeed)||0;
           if(pressId==='nilpeter13'){
-            //speedVal /=2;
+            speedVal/=2;
           }
           updateCurrentSpeed(pressId,speedVal);
         }
       });
     }
 
-    // --------------------------------------------------------------------------
-    // 7) Wire up 3 presses
-    // --------------------------------------------------------------------------
+    // wire up 3 presses
     setupDailyFootageListener('TEST_PRESS_001',0,'nilpeter');
     setupCurrentSpeedListener('TEST_PRESS_001','nilpeter');
 
@@ -634,4 +729,3 @@
   </script>
 </body>
 </html>
-
