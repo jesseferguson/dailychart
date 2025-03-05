@@ -436,7 +436,9 @@
       // Halve if 13 Nilpeter
       let displaySpeed = parseFloat(rawSpeed) || 0;
       if (pressId === 'nilpeter13') {
-        displaySpeed /= 2;
+        
+        //13 nilpeter hardware was double counting I fixed for the time being 3/4/25 - Jesse
+        //displaySpeed /= 2;
       }
 
       const oldVal = parseFloat(speedElem.dataset.oldValue) || 0;
@@ -611,7 +613,7 @@
           // Halve speed if 13 Nilpeter
           let speedVal=Number(data.currentSpeed)||0;
           if(pressId==='nilpeter13'){
-            speedVal /=2;
+            //speedVal /=2;
           }
           updateCurrentSpeed(pressId,speedVal);
         }
