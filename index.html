@@ -66,7 +66,7 @@
       /* We'll do a conic swirl from custom properties 
          plus a swirl animation if data-swirl="true". 
       */
-      border: 2.5px solid #4CAF50;
+      border: 5px solid #4CAF50;
       border-radius: 8px;
       padding: 7px 9px;
       background-color: #fff;  /* We'll override with conic gradient below. */
@@ -661,47 +661,56 @@
       computeAndDisplayAvgFpm(pressId, records, newVal);
     }
 
-    // daily_footage => chart + Halve 13
-    function setupDailyFootageListener(pressPath, datasetIndex, pressId){
-      firebase.database().ref(`${pressPath}/daily_footage`).on('value',(snapshot)=>{
-        const data=snapshot.val();
-        if(!data){
-          footageChart.data.datasets[datasetIndex].data=[];
+    function setupDailyFootageListener(pressPath, datasetIndex, pressId) {
+      firebase.database().ref(`${pressPath}/daily_footage`).on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) {
+          // No data => clear the dataset + update the footage to 0
+          footageChart.data.datasets[datasetIndex].data = [];
           footageChart.update();
           updateFootage(pressId, 0, []);
           return;
         }
-        let records=[];
-        if(typeof data==='object' && !Array.isArray(data)){
-          for(let key in data){
-            if(Object.prototype.hasOwnProperty.call(data,key)){
+    
+        // Convert the DB object/array into a sorted array of records
+        let records = [];
+        if (typeof data === 'object' && !Array.isArray(data)) {
+          for (let key in data) {
+            if (Object.prototype.hasOwnProperty.call(data, key)) {
               records.push(data[key]);
             }
           }
         } else {
-          records=Array.isArray(data)?data:[data];
+          records = Array.isArray(data) ? data : [data];
         }
-        records.sort((a,b)=>Number(a.timestamp)-Number(b.timestamp));
-
-        let cumulative=0;
-        const chartData=records.map(r=>{
-          const rawMs=Number(r.timestamp)*1000;
-          const correctedMs= rawMs+ offsetMs;
-
-          if(pressId==='nilpeter13'){
-            cumulative+=(Number(r.footageSinceLastSend)||0)/2;
-          } else {
-            cumulative+=(Number(r.footageSinceLastSend)||0);
-          }
-          return { x:new Date(correctedMs), y:cumulative };
+    
+        // Sort by timestamp ascending
+        records.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+    
+        // Build the chartData array + compute the cumulative footage
+        let cumulative = 0;
+        const chartData = records.map((r) => {
+          const rawMs = Number(r.timestamp) * 1000;
+          const correctedMs = rawMs + offsetMs;
+    
+          // No special case for 13 Nilpeter => treat them all the same
+          cumulative += (Number(r.footageSinceLastSend) || 0);
+    
+          return {
+            x: new Date(correctedMs),
+            y: cumulative
+          };
         });
-
-        footageChart.data.datasets[datasetIndex].data=chartData;
+    
+        // Update the chart dataset, then animate
+        footageChart.data.datasets[datasetIndex].data = chartData;
         footageChart.update();
-
+    
+        // Finally, call updateFootage to handle net production, sorting, average FPM, etc.
         updateFootage(pressId, cumulative, records);
       });
     }
+    
 
     // current_speed => Halve 13
     function setupCurrentSpeedListener(pressPath, pressId){
@@ -710,7 +719,7 @@
         if(data && data.currentSpeed!==undefined){
           let speedVal= Number(data.currentSpeed)||0;
           if(pressId==='nilpeter13'){
-            speedVal/=2;
+            //speedVal/=2;
           }
           updateCurrentSpeed(pressId,speedVal);
         }
@@ -729,3 +738,4 @@
   </script>
 </body>
 </html>
+
