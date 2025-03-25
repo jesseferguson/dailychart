@@ -313,6 +313,39 @@
 
         <div class="stopped-warning hidden" id="stopped_nilpeter13">STOPPED</div>
       </div>
+      <!-- ETI -->
+<div class="speed-box" id="speedBox_eti">
+  <h2>ETI</h2>
+  <div class="placement-icon" id="placementIcon_eti"></div>
+
+  <div>Speed:
+    <span class="metric-value" id="currentSpeed_eti" data-old-value="0">0</span> ft/min
+  </div>
+  <div>Footage:
+    <span class="metric-value" id="totalFootage_eti" data-old-value="0">0</span> ft
+  </div>
+
+  <div class="avg-fpm" id="avgFpm_eti">Avg: 0 ft/min</div>
+
+  <div class="stopped-warning hidden" id="stopped_eti">STOPPED</div>
+</div>
+<!-- Slitter -->
+      <div class="speed-box" id="speedBox_slitter">
+        <h2>Slitter</h2>
+        <div class="placement-icon" id="placementIcon_slitter"></div>
+        
+        <div>Speed:
+          <span class="metric-value" id="currentSpeed_slitter" data-old-value="0">0</span> ft/min
+        </div>
+        <div>Footage:
+          <span class="metric-value" id="totalFootage_slitter" data-old-value="0">0</span> ft
+        </div>
+
+        <div class="avg-fpm" id="avgFpm_slitter">Avg: 0 ft/min</div>
+
+        <div class="stopped-warning hidden" id="stopped_slitter">STOPPED</div>
+      </div>
+
 
     </div>
   </div>
@@ -387,6 +420,7 @@
       type:'line',
       data:{
         datasets:[
+            
           {
             label:'17 Nilpeter',
             data:[],
@@ -414,6 +448,28 @@
             data:[],
             borderColor:'#FF9800',
             backgroundColor:'rgba(255,152,0,0.1)',
+            fill:false,
+            tension:0.4,
+            pointRadius:0,
+            pointHoverRadius:0,
+            borderWidth:5
+          },
+          {
+            label:'ETI',
+            data:[],
+            borderColor:'#9C27B0',
+            backgroundColor:'rgba(156,39,176,0.1)',
+            fill:false,
+            tension:0.4,
+            pointRadius:0,
+            pointHoverRadius:0,
+            borderWidth:5
+          },
+          {
+            label:'Slitter',
+            data:[],
+            borderColor:'#FF00FF',
+            backgroundColor:'rgba(156,39,176,0.1)',
             fill:false,
             tension:0.4,
             pointRadius:0,
@@ -472,9 +528,6 @@
       if(!speedElem||!speedBox||!stoppedW)return;
 
       let displaySpeed=parseFloat(rawSpeed)||0;
-      if(pressId==='nilpeter13'){
-        displaySpeed/=2;
-      }
       const oldVal=parseFloat(speedElem.dataset.oldValue)||0;
       animateNumber(speedElem, oldVal, displaySpeed);
       speedElem.dataset.oldValue=displaySpeed;
@@ -501,12 +554,13 @@
     const pressFootages={
       nilpeter:0,
       aztech:0,
-      nilpeter13:0
+      nilpeter13:0,
+      eti: 0
     };
     const GOAL=300000;
 
     function updateNetProduction(){
-      const sum= pressFootages.nilpeter + pressFootages.aztech + pressFootages.nilpeter13;
+      const sum= pressFootages.nilpeter + pressFootages.aztech + pressFootages.nilpeter13 + pressFootages.eti + pressFootages.slitter;
       const waste=sum*0.03;
       const net=sum-waste;
 
@@ -548,6 +602,8 @@
         { pressId:'nilpeter',   footage:pressFootages.nilpeter,   boxId:'speedBox_nilpeter',   iconId:'placementIcon_nilpeter'},
         { pressId:'aztech',     footage:pressFootages.aztech,     boxId:'speedBox_aztech',     iconId:'placementIcon_aztech'},
         { pressId:'nilpeter13', footage:pressFootages.nilpeter13, boxId:'speedBox_nilpeter13', iconId:'placementIcon_nilpeter13'},
+        { pressId:'eti', footage:pressFootages.eti, boxId:'speedBox_eti', iconId:'placementIcon_eti' },
+        { pressId:'slitter',   footage:pressFootages.slitter,   boxId:'speedBox_slitter',   iconId:'placementIcon_slitter'},
       ];
       data.sort((a,b)=>b.footage - a.footage);
 
@@ -735,7 +791,13 @@
 
     setupDailyFootageListener('TEST_PRESS_003',2,'nilpeter13');
     setupCurrentSpeedListener('TEST_PRESS_003','nilpeter13');
+
+    setupDailyFootageListener('TEST_PRESS_004', 3, 'eti');
+    setupCurrentSpeedListener('TEST_PRESS_004', 'eti');
+
+    setupDailyFootageListener('TEST_PRESS_005', 4, 'slitter');
+    setupCurrentSpeedListener('TEST_PRESS_004', 'slitter');
+
   </script>
 </body>
 </html>
-
