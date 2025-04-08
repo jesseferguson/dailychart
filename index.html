@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>All-In-One Dashboard (Smooth Speed Color + 5AM Boundaries)</title>
   <!-- Load Chart.js from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -115,6 +116,9 @@
 
     /* Chart wrapper => so each chart can fill the container */
     .chart-wrapper {
+      min-height: 200px;     /* or whatever you want */
+      max-height: 900px;     /* optional limit */
+      position: relative;    /* so the canvas can fill its container */
       background: #fff;
       border: 1px solid #ddd;
       border-radius: 8px;
@@ -321,40 +325,60 @@
     // For simplicity: "Apr 2", "Apr 1", ...
     // We'll show them in descending order (6 days ago → 0 = today).
     function buildWeekDayLabels() {
-      const labels = [];
-      const now = new Date();
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-      }
-      return labels;
+      const ranges = buildDayRanges();
+      return ranges.map(r => {
+        const d = new Date(r.startSec * 1000);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      });
     }
     
 
     // Day ranges: each dayIndex from 5:00 AM => next day 4:59:59
     function buildDayRanges() {
       const now = new Date();
-      const ranges = [];
+      let lastCompleteOpDayStart = new Date(now);
     
-      for (let i = 6; i >= 0; i--) {
-        const dayStart = new Date(now);
-        dayStart.setDate(dayStart.getDate() - i);
-        dayStart.setHours(5, 0, 0, 0);
-    
-        const dayEnd = new Date(dayStart);
-        dayEnd.setDate(dayEnd.getDate() + 1);
-        dayEnd.setHours(4, 59, 59, 999);
-    
-        const startSec = Math.floor(dayStart.getTime() / 1000);
-        const endSec = Math.floor(dayEnd.getTime() / 1000);
-    
-        // Index 0 = 6 days ago, Index 6 = today
-        ranges.push({ dayIndex: 6 - i, startSec, endSec });
+      // Determine the most recent complete operational day.
+      // Operational day: 5:00 AM to 4:59:59.999 AM the next day.
+      if (now.getHours() >= 5) {
+        // After 5:00 AM: the day from yesterday 5:00 AM to today 4:59:59.999 is complete.
+        lastCompleteOpDayStart.setDate(lastCompleteOpDayStart.getDate() - 1);
+      } else {
+        // Before 5:00 AM: the current op day is still in progress.
+        // The most recent complete day is the one that ended yesterday.
+        lastCompleteOpDayStart.setDate(lastCompleteOpDayStart.getDate() - 2);
       }
+      // Set the time to exactly 5:00 AM
+      lastCompleteOpDayStart.setHours(5, 0, 0, 0);
     
+      // Build ranges for the last 7 complete operational days.
+      const ranges = [];
+      for (let i = 6; i >= 0; i--) {
+        const opDayStart = new Date(lastCompleteOpDayStart);
+        opDayStart.setDate(opDayStart.getDate() - i); // shift back by i days
+        // Each op day starts at 5:00 AM
+        opDayStart.setHours(5, 0, 0, 0);
+    
+        const opDayEnd = new Date(opDayStart);
+        opDayEnd.setDate(opDayEnd.getDate() + 1); // next day...
+        // ... ending at 4:59:59.999 AM
+        opDayEnd.setHours(4, 59, 59, 999);
+    
+        ranges.push({
+          dayIndex: 6 - i, // 0 = oldest, 6 = most recent complete day
+          startSec: Math.floor(opDayStart.getTime() / 1000),
+          endSec: Math.floor(opDayEnd.getTime() / 1000),
+          // Label using the start date (e.g., "4/4/2025" for the op day from 4/4/2025 5:00 AM to 4/5/2025 4:59 AM)
+          label: opDayStart.toLocaleDateString()
+        });
+      }
       return ranges;
     }
+    
+    // For debugging, log the computed ranges:
+    console.log("Operational Day Ranges:", buildDayRanges());
+    
+    
     
     
 
