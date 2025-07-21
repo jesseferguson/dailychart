@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Production Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #121212;
+      --card-bg: rgba(255,255,255,0.07);
+      --text: #EEE;
+      --subtext: #BBB;
+      --primary: #00BCD4;
+      --aztech:rgb(170, 10, 238);
+      --nilpeter:rgb(0, 152, 212);
+      --nilpeter13:rgb(233, 220, 30);
+      --eti: #FF1493;
+      --slitter:rgb(210, 244, 245);
+      --aztech13:rgb(18, 230, 145);
+      --danger: #E53935;
+      --safe: #43A047;
+    }
+    body {
+      min-height: 100vh;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0.7rem;
+    }
+    .company-footage-bar {
+      width: 98vw; max-width: 1200px; margin: 0 auto 1rem auto;
+      background: #232f36; border-radius: 0.7rem; box-shadow: 0 1.5px 10px 0 rgba(0,188,212,0.10);
+      padding: 0.7rem 1rem 0.85rem 1rem;
+      display: flex; flex-direction: column; align-items: stretch; position: relative; z-index: 2;
+    }
+    .company-footage-main { display: flex; align-items: baseline; gap: 0.7rem; font-size: 1.33rem; font-weight: 800; color: var(--primary); margin-bottom: 0.15rem; flex-wrap: wrap;}
+    .big-number { font-size: 2.1rem; font-weight: 900; color: var(--primary); min-width: 105px; text-align: right; }
+    .company-goal-bar { width: 100%; background: #223239; border-radius: 0.45rem; height: 1.18rem; overflow: hidden; margin-top: 0.19rem; position: relative; display: flex; }
+    .goal-fill-nilpeter, .goal-fill-aztech, .goal-fill-eti, .goal-fill-aztech13, .goal-fill-slitter { height: 100%; position: absolute; top: 0; z-index: 1; transition: width 0.7s cubic-bezier(.4,2,.3,1);}
+    .goal-fill-nilpeter { background: var(--nilpeter); border-radius: 0.45rem 0 0 0.45rem; left: 0; }
+    .goal-fill-aztech { background: var(--aztech); }
+    .goal-fill-eti { background: var(--eti); }
+    .goal-fill-aztech13 { background: var(--aztech13);}
+    .goal-fill-slitter { background: var(--slitter);}
+    .goal-percent-label { position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%); color: #fff; font-weight: 700; font-size: 0.95rem; z-index: 2; text-shadow: 0 1px 6px #0008; }
+    .dashboard-main-flex { width: 98vw; max-width: 1200px; display: flex; gap: 1.2rem; align-items: flex-start; justify-content: center; flex-wrap: wrap;}
+    .chart-panel { flex: 3 1 350px; max-width: 100%; min-width: 280px;}
+    .chart-card { background: var(--card-bg); border-radius: 1.2rem; padding: 1rem 1.2rem; margin-bottom: 0.2rem; }
+    #footageChart { width: 100% !important; height: 500px !important; }
+    .speed-cards-container { display: flex; flex-direction: column; gap: 1.2rem; min-width: 220px; max-width: 400px; width: 100%; }
+    .card.speed-card {
+      flex: 1 1 0;
+      min-width: 170px; width: 100%; text-align: center; position: relative;
+      padding: 0.65rem 0.7rem 0.4rem 0.7rem;
+      background: var(--card-bg); border-radius: 1rem; box-shadow: 0 4px 30px rgba(0,0,0,0.19);
+      margin-bottom: 0.08rem; transition: box-shadow 0.6s, border 0.6s;
+      box-sizing: border-box;
+    }
+    .speed-card.danger {
+      box-shadow: 0 0 24px 4px var(--danger), 0 1.5px 10px 0 rgba(0,0,0,0.17);
+      border: 2.8px solid var(--danger);
+      animation: card-glow 1.25s alternate infinite;
+    }
+    @keyframes card-glow {
+      0%   { box-shadow: 0 0 24px 4px var(--danger), 0 1.5px 10px 0 rgba(0,0,0,0.12);}
+      100% { box-shadow: 0 0 48px 9px var(--danger), 0 1.5px 20px 0 rgba(0,0,0,0.14);}
+    }
+    .press-header-row { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; font-size: 1.1rem; margin-bottom: 0.18rem;}
+    .press-name-strong { font-weight: 800; font-size: 1rem; }
+    .total-footage-strong { font-size: 1.23rem; font-weight: 900; color: var(--primary);}
+    .speed-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.6rem; margin-bottom: 0.1rem; flex-direction: row-reverse;
+    }
+    .speed-indicator { width: 14px; height: 14px; border-radius: 50%; border: 1.2px solid #202628; display: inline-block; transition: background 1.2s, box-shadow 1.2s;}
+    .speed-indicator.red { background: #E53935; animation: speedpulse-red 2.2s cubic-bezier(.5,0,.5,1) infinite alternate;}
+    .speed-indicator.yellow { background: #FDD835; animation: speedpulse-yellow 1s cubic-bezier(.6,.2,0,1) infinite alternate;}
+    .speed-indicator.green { background: #43A047; animation: speedpulse-green 1s cubic-bezier(.6,.2,0,1) infinite alternate;}
+    .speed-indicator.bright-green { background: #32fc6c; animation: speedpulse-bright 1s cubic-bezier(.6,.2,0,1) infinite alternate;}
+    @keyframes speedpulse-red {0%{box-shadow:0 0 4px 1px #e5393550;}55%{box-shadow:0 0 22px 8px #e53935fa;}100%{box-shadow:0 0 10px 4px #e5393585;}}
+    @keyframes speedpulse-yellow {0%{box-shadow:0 0 1.5px 0px #fdd83545;}60%{box-shadow:0 0 8px 3px #fdd835a0;}100%{box-shadow:0 0 4px 1px #fdd8357a;}}
+    @keyframes speedpulse-green {0%{box-shadow:0 0 1.5px 0px #43a04734;}60%{box-shadow:0 0 7px 2.5px #43a04785;}100%{box-shadow:0 0 3.5px 1px #43a0474d;}}
+    @keyframes speedpulse-bright {0%{box-shadow:0 0 2px 0.5px #56ff9260;}60%{box-shadow:0 0 8.5px 3px #56ff92b7;}100%{box-shadow:0 0 5.5px 2px #56ff927a;}}
+    .speed-value { font-size: 1.18rem; font-weight: 900; min-width: 46px; text-align: right; }
+    .progress-bar { flex: 1; height: 0.55rem; background: #333; border-radius: 0.25rem; overflow: hidden; margin-right: 0.5rem; min-width: 40px;}
+    .progress-bar .fill { height: 100%; width: 0; transition: width 1s, background 0.5s;}
+    .fill.red { background: #E53935 !important; }
+    .fill.yellow { background: #FDD835 !important; }
+    .fill.green { background: #43A047 !important; }
+    .fill.bright-green { background: #32fc6c !important; }
+    .downtime-total-label {
+      display: flex; align-items: center; justify-content: center; gap: 0.32em;
+      font-size: 1rem; color: var(--subtext); font-weight: 700; margin-top: 0.18rem;
+    }
+    .downtime-icon {
+      display: inline-block; vertical-align: middle; font-size: 1.3em; color: #FDD835; margin-right: 0.12em;
+      filter: drop-shadow(0 1px 1.2px #0007);
+    }
+    .down-warning {
+      color: var(--danger);
+      font-weight: 800;
+      font-size: 1.04rem;
+      margin: 0.25rem 0 0.09rem 0;
+      letter-spacing: 0.02em;
+      text-shadow: 0 2px 8px #e5393523;
+      animation: card-glow 1.05s alternate infinite;
+      display: flex; align-items: center; justify-content: center; gap: 0.2em;
+    }
+    @media (max-width: 1000px) {
+      .dashboard-main-flex { flex-direction: column; gap: 1.2rem; }
+      .chart-panel, .speed-cards-container { max-width: 100vw; }
+    }
+    @media (max-width: 650px) {
+      .company-footage-bar, .speed-cards-container { max-width: 100vw; min-width: unset; }
+      .speed-card { min-width: 98vw; max-width: 100vw;}
+      .company-footage-main { font-size: 1rem; flex-direction: column;}
+      .big-number { font-size: 1.45rem; min-width: 70px;}
+      #footageChart { height: 220px !important; }
+      .chart-card { padding: 0.3rem 0.2rem; }
+      .speed-row { flex-direction: column-reverse; gap: 0.2rem; }
+      .progress-bar { margin: 0; width: 100%; min-width: unset; }
+      .speed-value { text-align: center; }
+    }
+    @keyframes casino-flash {
+      0%, 100% { background: linear-gradient(90deg, #ffe066 20%, #fff8dc 80%); color: #fff8dc; box-shadow: 0 0 8px 2px #ffe06670; }
+      30% { background: linear-gradient(90deg, #fff8dc 30%, #ffe066 70%); color: #ffd700; box-shadow: 0 0 18px 6px #ffd70066; }
+      60% { background: linear-gradient(90deg, #ffe066 70%, #fff8dc 100%); color: #fff8dc; box-shadow: 0 0 14px 4px #fff8dc55; }
+    }
+    .goal-hit, .goal-over {
+      background: var(--card-bg);
+      color: #ffd700 !important;
+      box-shadow: 0 0 16px 4px #ffd70080, 0 0 0px 0px #fff8dc00;
+      border-radius: 0.7rem;
+      transition: box-shadow 0.8s;
+    }
+    .goal-hit .goal-percent-label,
+    .goal-over .goal-percent-label {
+      color: #ffd700 !important;
+      text-shadow: 0 0 6px #ffd70077, 0 0 12px #fff8dc33;
+    }
+    #company-footage-message .goal-hit, #company-footage-message .goal-over {
+      font-weight: 800;
+      color: #ffd700;
+      text-shadow: 0 0 10px #ffd70044, 0 0 16px #fff8dc44;
+    }
+  </style>
+</head>
+<body>
+  <div class="company-footage-bar" id="company-footage-bar">
+    <div class="company-footage-main" id="company-footage-main">
+      <span>Total Company Footage:</span>
+      <span class="big-number" id="company-footage-val">0</span>
+      <span id="company-footage-message" style="font-size:1.05rem;"></span>
+    </div>
+    <div class="company-goal-bar" id="company-goal-bar">
+      <div class="goal-fill-eti" id="goal-fill-eti"></div>
+      <div class="goal-fill-nilpeter" id="goal-fill-nilpeter"></div>
+      <div class="goal-fill-aztech" id="goal-fill-aztech"></div>
+      <div class="goal-fill-aztech13" id="goal-fill-aztech13"></div>
+      <div class="goal-fill-slitter" id="goal-fill-slitter"></div>
+      <span class="goal-percent-label" id="goal-percent-label">0%</span>
+    </div>
+  </div>
+  <div class="dashboard-main-flex">
+    <div class="speed-cards-container">
+      <!-- ETI -->
+      <div class="card speed-card" id="speed-widget-ETI" style="cursor:pointer;" onclick="window.location.href='eti.html'">
+        <div class="press-header-row">
+          <span id="speed-indicator-ETI" class="speed-indicator"></span>
+          <span class="press-name-strong" id="press-name-ETI">ETI</span>
+          <span class="total-footage-strong big-number" id="total-footage-ETI">0</span>
+        </div>
+        <div class="speed-row">
+          <span id="speed-value-ETI" class="speed-value big-number">0</span>
+          <div class="progress-bar"><div id="speed-fill-ETI" class="fill"></div></div>
+        </div>
+        <span id="total-downtime-ETI" class="downtime-total-label"></span>
+        <div id="down-warning-ETI" class="down-warning" style="display:none;"></div>
+      </div>
+      <!-- 17" Nilpeter -->
+      <div class="card speed-card" id="speed-widget-17">
+        <div class="press-header-row">
+          <span id="speed-indicator-17" class="speed-indicator"></span>
+          <span class="press-name-strong" id="press-name-17">17" Nilpeter</span>
+          <span class="total-footage-strong big-number" id="total-footage-17">0</span>
+        </div>
+        <div class="speed-row">
+          <span id="speed-value-17" class="speed-value big-number">0</span>
+          <div class="progress-bar"><div id="speed-fill-17" class="fill"></div></div>
+        </div>
+        <span id="total-downtime-17" class="downtime-total-label"></span>
+        <div id="down-warning-17" class="down-warning" style="display:none;"></div>
+      </div>
+      <!-- 18" Aztech -->
+      <div class="card speed-card" id="speed-widget-18">
+        <div class="press-header-row">
+          <span id="speed-indicator-18" class="speed-indicator"></span>
+          <span class="press-name-strong" id="press-name-18">18" Aztech</span>
+          <span class="total-footage-strong big-number" id="total-footage-18">0</span>
+        </div>
+        <div class="speed-row">
+          <span id="speed-value-18" class="speed-value big-number">0</span>
+          <div class="progress-bar"><div id="speed-fill-18" class="fill"></div></div>
+        </div>
+        <span id="total-downtime-18" class="downtime-total-label"></span>
+        <div id="down-warning-18" class="down-warning" style="display:none;"></div>
+      </div>
+      <!-- 13AZTECH -->
+      <div class="card speed-card" id="speed-widget-13AZTECH">
+        <div class="press-header-row">
+          <span id="speed-indicator-13AZTECH" class="speed-indicator"></span>
+          <span class="press-name-strong" id="press-name-13AZTECH">13AZTECH</span>
+          <span class="total-footage-strong big-number" id="total-footage-13AZTECH">0</span>
+        </div>
+        <div class="speed-row">
+          <span id="speed-value-13AZTECH" class="speed-value big-number">0</span>
+          <div class="progress-bar"><div id="speed-fill-13AZTECH" class="fill"></div></div>
+        </div>
+        <span id="total-downtime-13AZTECH" class="downtime-total-label"></span>
+        <div id="down-warning-13AZTECH" class="down-warning" style="display:none;"></div>
+      </div>
+      <!-- 13NILPETER -->
+      <div class="card speed-card" id="speed-widget-13NILPETER">
+        <div class="press-header-row">
+          <span id="speed-indicator-13NILPETER" class="speed-indicator"></span>
+          <span class="press-name-strong" id="press-name-13NILPETER">13NILPETER</span>
+          <span class="total-footage-strong big-number" id="total-footage-13NILPETER">0</span>
+        </div>
+        <div class="speed-row">
+          <span id="speed-value-13NILPETER" class="speed-value big-number">0</span>
+          <div class="progress-bar"><div id="speed-fill-13NILPETER" class="fill"></div></div>
+        </div>
+        <span id="total-downtime-13NILPETER" class="downtime-total-label"></span>
+        <div id="down-warning-13NILPETER" class="down-warning" style="display:none;"></div>
+      </div>
+      <!-- SLITTER -->
+      <div class="card speed-card" id="speed-widget-SLITTER">
+        <div class="press-header-row">
+          <span id="speed-indicator-SLITTER" class="speed-indicator"></span>
+          <span class="press-name-strong" id="press-name-SLITTER">SLITTER</span>
+          <span class="total-footage-strong big-number" id="total-footage-SLITTER">0</span>
+        </div>
+        <div class="speed-row">
+          <span id="speed-value-SLITTER" class="speed-value big-number">0</span>
+          <div class="progress-bar"><div id="speed-fill-SLITTER" class="fill"></div></div>
+        </div>
+        <span id="total-downtime-SLITTER" class="downtime-total-label"></span>
+        <div id="down-warning-SLITTER" class="down-warning" style="display:none;"></div>
+      </div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-card">
+        <h2 style="color:var(--subtext);font-size:1.15rem;margin:0 0 0.3em 0;font-weight:600;">Daily Footage</h2>
+        <canvas id="footageChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <script>
+    function getDowntimeWindow() {
+      const now = new Date();
+      let base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      let start = new Date(base.getTime());
+      start.setHours(6, 0, 0, 0); // 6:00 AM
+      let end = new Date(start.getTime());
+      end.setDate(start.getDate() + 1);
+      end.setHours(2, 30, 0, 0); // 2:30 AM next day
+      return {start, end};
+    }
+    const PRESSES = [
+      {
+        name: 'ETI',
+        id: 'ETI',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--eti').trim(),
+        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_CURRENT_SPEED.json',
+        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_DAILY_SPEED.json'
+      },
+      {
+        name: '17" Nilpeter',
+        id: '17',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--nilpeter').trim(),
+        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/17Nilpeter_CURRENT_SPEED.json',
+        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/17Nilpeter_DAILY_SPEED.json'
+      },
+      {
+        name: '18" Aztech',
+        id: '18',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--aztech').trim(),
+        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/18Aztech_CURRENT_SPEED.json',
+        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/18Aztech_DAILY_SPEED.json'
+      },
+      {
+        name: '13AZTECH',
+        id: '13AZTECH',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--aztech13').trim(),
+        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13AZTECH_CURRENT_SPEED.json',
+        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13AZTECH_DAILY_SPEED.json'
+      },
+      {
+        name: '13NILPETER',
+        id: '13NILPETER',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--nilpeter13').trim(),
+        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13NILPETER_CURRENT_SPEED.json',
+        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13NILPETER_DAILY_SPEED.json'
+      },
+      {
+        name: 'SLITTER',
+        id: 'SLITTER',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--slitter').trim(),
+        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/SLITTER_CURRENT_SPEED.json',
+        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/SLITTER_DAILY_SPEED.json'
+      }
+    ];
+    const COMPANY_GOAL = 300000;
+    const REPORT_INTERVAL_SEC = 10;
+    const DOWNTIME_THRESHOLD = 0.01;
+
+    function animateNumber(el, to, duration=7000) {
+      let from = Number((el.textContent || "0").replace(/,/g,"")) || 0;
+      if (Math.abs(to - from) < 1) { el.textContent = to.toLocaleString(); return; }
+      let start = performance.now();
+      function step(now) {
+        let t = Math.min((now - start) / duration, 1);
+        let eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        let val = Math.round(from + (to - from) * eased);
+        el.textContent = val.toLocaleString();
+        if (t < 1) requestAnimationFrame(step);
+        else el.textContent = Math.round(to).toLocaleString();
+      }
+      requestAnimationFrame(step);
+    }
+    function cleanEntries(raw, dStart, dEnd) {
+      return Object.values(raw || {})
+        .map(v => {
+          if (v.timestamp == null || v.footage == null) return null;
+          let ts = Number(v.timestamp) * 1000;
+          if (isNaN(ts)) return null;
+          return { ts, footage: v.footage };
+        })
+        .filter(e => e && e.ts >= dStart.getTime() && e.ts < dEnd.getTime())
+        .sort((a, b) => a.ts - b.ts);
+    }
+
+    let footageChart;
+    function setupFootageChart() {
+      const ctx = document.getElementById('footageChart').getContext('2d');
+      footageChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: PRESSES.map(press => ({
+            label: press.name,
+            data: [],
+            fill: false,
+            borderWidth: 2,
+            tension: 0.3,
+            borderColor: press.color,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            pointBackgroundColor: press.color
+          }))
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'hour', displayFormats: { hour: 'ha' } },
+              ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text') },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            },
+            y: {
+              ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text'), font: { size: 16 } },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            }
+          },
+          animation: { duration: 220, easing: 'easeOutQuart' }
+        }
+      });
+    }
+
+    async function fetchAllData() {
+      const {start: downtimeStart, end: downtimeEnd} = getDowntimeWindow();
+      const results = await Promise.all(
+        PRESSES.map(press =>
+          Promise.all([
+            fetch(press.SPEED_URL).then(r => r.json()).catch(() => null),
+            fetch(press.FOOTAGE_URL).then(r => r.json()).catch(() => null)
+          ])
+        )
+      );
+      let pressTotals = [];
+      let chartData = [];
+      await Promise.all(results.map(async (res, idx) => {
+        const [speedData, footageData] = res;
+        const press = PRESSES[idx];
+        const currentSpeed = speedData?.currentSpeed || 0;
+        let arr = cleanEntries(footageData, downtimeStart, downtimeEnd);
+        let lastCum = 0;
+        let chartPoints = [];
+        arr.forEach(e => {
+          lastCum += Number(e.footage);
+          chartPoints.push({ x: new Date(e.ts), y: lastCum });
+        });
+        chartData.push(chartPoints);
+        pressTotals.push(lastCum);
+
+        // --- DOWNTIME LOGIC (only current, last 30 min) ---
+        let rightNow = new Date();
+        let intervalMs = REPORT_INTERVAL_SEC * 1000;
+        let timePtr = downtimeStart.getTime();
+        let arrIdx = 0;
+        let totalDowntimeMin = 0;
+        let currentDownMin = 0;
+        let isCurrentlyDown = false;
+        // Find when last *up* state was, then count continuous downtime
+        let lastFootageTs = null;
+        for (let i = arr.length - 1; i >= 0; i--) {
+          if (arr[i].footage > DOWNTIME_THRESHOLD) {
+            lastFootageTs = arr[i].ts;
+            break;
+          }
+        }
+        // Is the press currently down? (most recent point footage <= threshold, or no data yet)
+        if (
+          arr.length === 0 ||
+          arr[arr.length-1].footage <= DOWNTIME_THRESHOLD
+        ) {
+          isCurrentlyDown = true;
+          let downSince = lastFootageTs ? lastFootageTs : downtimeStart.getTime();
+          currentDownMin = Math.round((rightNow.getTime() - downSince) / (60*1000));
+        }
+        // Compute total downtime for the shift
+        timePtr = downtimeStart.getTime();
+        arrIdx = 0;
+        while (timePtr < rightNow.getTime() && timePtr < downtimeEnd.getTime()) {
+          let windowEnd = timePtr + intervalMs;
+          let rec = arr[arrIdx];
+          let downtime = false;
+          if (rec && rec.ts >= timePtr && rec.ts < windowEnd) {
+            if (Number(rec.footage) <= DOWNTIME_THRESHOLD) downtime = true;
+            arrIdx++;
+          } else {
+            downtime = true;
+          }
+          if (downtime) totalDowntimeMin += REPORT_INTERVAL_SEC / 60;
+          timePtr = windowEnd;
+        }
+        updateSpeedBox(press, currentSpeed, lastCum, totalDowntimeMin, currentDownMin, isCurrentlyDown);
+      }));
+      updateCompanyFootageBar(pressTotals);
+      // Update chart lines for all presses
+      chartData.forEach((points, idx) => {
+        footageChart.data.datasets[idx].data = points;
+      });
+      footageChart.update();
+    }
+
+    function updateSpeedBox(press, speed, totalFootage, totalDowntimeMin, currentDownMin, isCurrentlyDown) {
+      const speedEl = document.getElementById('speed-value-' + press.id);
+      const tfTotalEl = document.getElementById('total-footage-' + press.id);
+      const pressNameEl = document.getElementById('press-name-' + press.id);
+      const speedIndicator = document.getElementById('speed-indicator-' + press.id);
+      const fillEl = document.getElementById('speed-fill-' + press.id);
+      const dtLabel = document.getElementById('total-downtime-' + press.id);
+      const warningEl = document.getElementById('down-warning-' + press.id);
+      animateNumber(speedEl, Math.round(speed), 7000); // speed animates in 7s
+      animateNumber(tfTotalEl, Math.round(totalFootage), 10000); // total per press animates in 10s
+      pressNameEl.style.color = press.color;
+      tfTotalEl.style.color = press.color;
+      speedIndicator.className = "speed-indicator";
+      fillEl.className = "fill";
+      let fillColorClass = "red";
+      if (speed === 0) { speedIndicator.classList.add("red"); fillColorClass = "red";
+      } else if (speed > 0 && speed < 150) { speedIndicator.classList.add("yellow"); fillColorClass = "yellow";
+      } else if (speed >= 150 && speed < 300) { speedIndicator.classList.add("green"); fillColorClass = "green";
+      } else if (speed >= 300) { speedIndicator.classList.add("bright-green"); fillColorClass = "bright-green";
+      }
+      fillEl.classList.add(fillColorClass);
+      const pct = Math.min(speed / 700 * 100, 100) + '%';
+      fillEl.style.width = pct;
+      speedEl.style.color = getComputedStyle(fillEl).backgroundColor;
+      // Format downtime:
+      let downtimeStr = "";
+      if (totalDowntimeMin < 60) {
+        downtimeStr = `${Math.round(totalDowntimeMin)} min`;
+      } else {
+        let hours = totalDowntimeMin / 60;
+        downtimeStr = `${hours % 1 === 0 ? hours : hours.toFixed(1)} hour${hours >= 2 ? "s" : ""}`;
+      }
+      dtLabel.innerHTML = `<span class="downtime-icon">⏱️</span> ${downtimeStr}`;
+      // Down for more than 30 consecutive minutes AND currently down?
+      const speedCard = document.getElementById('speed-widget-' + press.id);
+      if (isCurrentlyDown && currentDownMin >= 30) {
+        warningEl.innerHTML = `<span>Down ${currentDownMin} min</span>`;
+        warningEl.style.display = "flex";
+        speedCard.classList.add("danger");
+      } else {
+        warningEl.innerHTML = ``;
+        warningEl.style.display = "none";
+        speedCard.classList.remove("danger");
+      }
+    }
+
+    function updateCompanyFootageBar(companyTotals) {
+      let total = companyTotals.reduce((a, b) => a + b, 0);
+      let percent = Math.min((total / COMPANY_GOAL) * 100, 999.9);
+
+      // For each press, calculate its portion of the bar
+      let etiPct = total ? companyTotals[0] / total * 100 : 0;
+      let nilpeterPct = total ? companyTotals[1] / total * 100 : 0;
+      let aztechPct = total ? companyTotals[2] / total * 100 : 0;
+      let aztech13Pct = total ? companyTotals[3] / total * 100 : 0;
+      let nilpeter13Pct = total ? companyTotals[4] / total * 100 : 0;
+      let slitterPct = total ? companyTotals[5] / total * 100 : 0;
+
+      let goalFillEti = document.getElementById('goal-fill-eti');
+      let goalFillNilpeter = document.getElementById('goal-fill-nilpeter');
+      let goalFillAztech = document.getElementById('goal-fill-aztech');
+      let goalFillAztech13 = document.getElementById('goal-fill-aztech13');
+      let goalFillSlitter = document.getElementById('goal-fill-slitter');
+      let goalPercentLabel = document.getElementById('goal-percent-label');
+      let companyFootageValEl = document.getElementById('company-footage-val');
+      let companyFootageMsg = document.getElementById('company-footage-message');
+      let companyGoalBar = document.getElementById('company-goal-bar');
+      let companyFootageMain = document.getElementById('company-footage-main');
+
+      // Set each bar's left and width for stacking
+      goalFillEti.style.left = "0%";
+      goalFillEti.style.width = (percent * (etiPct/100)) + "%";
+      goalFillNilpeter.style.left = (percent * (etiPct/100)) + "%";
+      goalFillNilpeter.style.width = (percent * (nilpeterPct/100)) + "%";
+      goalFillAztech.style.left = (percent * ((etiPct + nilpeterPct)/100)) + "%";
+      goalFillAztech.style.width = (percent * (aztechPct/100)) + "%";
+      goalFillAztech13.style.left = (percent * ((etiPct + nilpeterPct + aztechPct)/100)) + "%";
+      goalFillAztech13.style.width = (percent * (aztech13Pct/100)) + "%";
+      goalFillSlitter.style.left = (percent * ((etiPct + nilpeterPct + aztechPct + aztech13Pct)/100)) + "%";
+      goalFillSlitter.style.width = (percent * (slitterPct/100)) + "%";
+
+      goalPercentLabel.textContent = percent.toFixed(0) + "%";
+      animateNumber(companyFootageValEl, Math.round(total), 10000); // company total animates in 10s
+
+      // Remove casino/goal classes first
+      companyFootageValEl.classList.remove("goal-hit", "goal-over");
+      companyGoalBar.classList.remove("goal-hit", "goal-over");
+      companyFootageMain.classList.remove("goal-hit", "goal-over");
+      companyFootageMsg.innerHTML = '';
+
+      if (total >= COMPANY_GOAL && total < COMPANY_GOAL * 1.10) {
+        companyGoalBar.classList.add("goal-hit");
+        companyFootageValEl.classList.add("goal-hit");
+        companyFootageMain.classList.add("goal-hit");
+        companyFootageMsg.innerHTML = `<span class="goal-hit">Goal Hit! 🚀</span>`;
+      } else if (total >= COMPANY_GOAL * 1.10) {
+        companyGoalBar.classList.add("goal-over");
+        companyFootageValEl.classList.add("goal-over");
+        companyFootageMain.classList.add("goal-over");
+        companyFootageMsg.innerHTML = `<span class="goal-over">Over Goal! 🎉</span>`;
+      } else {
+        companyFootageMsg.innerHTML = `<span style="color:#bbb;font-weight:500;font-size:1rem;">Goal: ${COMPANY_GOAL.toLocaleString()} ft</span>`;
+      }
+    }
+
+    setupFootageChart();
+    fetchAllData();
+    setInterval(fetchAllData, 10000);
+  </script>
+</body>
+</html>
