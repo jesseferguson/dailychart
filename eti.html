@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ETI Press Details</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      min-height: 100vh;
+      font-family: 'Inter', sans-serif;
+      background: #121212;
+      color: #EEE;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem;
+    }
+    .press-detail-card {
+      background: rgba(255,255,255,0.07);
+      border-radius: 1.2rem;
+      padding: 2rem 2.2rem;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.19);
+      margin-bottom: 2rem;
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+    }
+    .big-label {
+      font-size: 2.2rem; font-weight: 900; color: #FF1493;
+    }
+    .sub-label {
+      font-size: 1.15rem; color: #BBB; margin-bottom: 0.2rem;
+    }
+    .stat-number {
+      font-size: 3.5rem; font-weight: 900; margin: 0.25em 0; color: #00BCD4;
+      text-shadow: 0 0 16px #00bcd420;
+      transition: color 0.5s;
+    }
+    .chart-card { background: rgba(255,255,255,0.07); border-radius: 1.2rem; padding: 1.2rem 1.2rem; }
+    #yearlyChart { width: 100% !important; height: 380px !important; }
+    .back-link {
+      margin-top: 2rem; color: #BBB; font-weight: 600; font-size: 1.05rem;
+      text-decoration: none; display: inline-block;
+      transition: color 0.3s;
+    }
+    .back-link:hover { color: #00BCD4; }
+  </style>
+</head>
+<body>
+  <div class="press-detail-card">
+    <div class="big-label">ETI Press</div>
+    <div class="sub-label">Current Speed</div>
+    <div class="stat-number" id="current-speed">0</div>
+    <div class="sub-label">Total Footage for the Year</div>
+    <div class="stat-number" id="yearly-footage">0</div>
+  </div>
+  <div class="chart-card" style="max-width:600px;margin:0 auto;">
+    <h2 style="color:#bbb;font-size:1.08rem;font-weight:600;margin-bottom:1em;">Yearly Footage Chart</h2>
+    <canvas id="yearlyChart"></canvas>
+  </div>
+  <a href="home.html" class="back-link">← Back to Dashboard</a>
+  <!-- Load Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<!-- Load the date adapter (MUST be before chart creation) -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+
+  <script>
+    // Replace these with your actual Firebase endpoints
+    const SPEED_URL = "https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_CURRENT_SPEED.json";
+    const YEARLY_URL = "https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_YEARLY_FOOTAGE.json";
+
+    // Animate number
+    function animateNumber(el, to, duration=1600) {
+      let from = Number((el.textContent || "0").replace(/,/g,"")) || 0;
+      if (Math.abs(to - from) < 1) { el.textContent = to.toLocaleString(); return; }
+      let start = performance.now();
+      function step(now) {
+        let t = Math.min((now - start) / duration, 1);
+        let eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        let val = Math.round(from + (to - from) * eased);
+        el.textContent = val.toLocaleString();
+        if (t < 1) requestAnimationFrame(step);
+        else el.textContent = Math.round(to).toLocaleString();
+      }
+      requestAnimationFrame(step);
+    }
+
+    // Fetch and update speed and yearly total
+    async function updateData() {
+      // Fetch speed
+      let speed = 0;
+      try {
+        const speedRes = await fetch(SPEED_URL);
+        const speedData = await speedRes.json();
+        speed = speedData?.currentSpeed ?? 0;
+      } catch (e) { }
+      animateNumber(document.getElementById("current-speed"), speed, 900);
+
+      // Fetch yearly data
+      let total = 0;
+      let chartPoints = [];
+      try {
+        const yearRes = await fetch(YEARLY_URL);
+        const yearData = await yearRes.json();
+        if (yearData) {
+          // Assuming structure: { key1: {timestamp: ..., footage: ...}, ... }
+          let arr = Object.values(yearData).map(entry => ({
+            x: entry.timestamp ? new Date(Number(entry.timestamp) * 1000) : undefined,
+            y: Number(entry.footage) || 0
+          })).filter(e => e.x && e.y);
+          arr.sort((a, b) => a.x - b.x);
+          let cumulative = 0;
+          chartPoints = arr.map(e => {
+            cumulative += e.y;
+            return { x: e.x, y: cumulative };
+          });
+          total = cumulative;
+        }
+      } catch (e) {}
+      animateNumber(document.getElementById("yearly-footage"), total, 1500);
+
+      // Update chart
+      yearlyChart.data.datasets[0].data = chartPoints;
+      yearlyChart.update();
+    }
+
+    // Chart.js setup
+    const ctx = document.getElementById('yearlyChart').getContext('2d');
+    const yearlyChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: [{
+          label: "Cumulative Yearly Footage",
+          data: [],
+          borderColor: "#00BCD4",
+          fill: false,
+          borderWidth: 3,
+          pointRadius: 0,
+          tension: 0.22
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { type: 'time', time: { unit: 'month' }, ticks: { color: "#EEE" }, grid: { color: 'rgba(255,255,255,0.09)' }},
+          y: { ticks: { color: "#EEE", font: { size: 16 } }, grid: { color: 'rgba(255,255,255,0.10)' } }
+        },
+        animation: { duration: 300 }
+      }
+    });
+
+    updateData();
+    setInterval(updateData, 10000); // Update every 10s
+  </script>
+</body>
+</html>
