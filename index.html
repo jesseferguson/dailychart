@@ -1,783 +1,581 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>All-In-One Dashboard (Smooth Speed Color + 5AM Boundaries)</title>
-  <!-- Load Chart.js from CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <!-- date-fns adapter for Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Production Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    /* Reset & Full-Screen Use */
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background-color: #f5f5f5;
-      font-family: Arial, sans-serif;
-      color: #333;
+    :root {
+      --bg: #121212;
+      --card-bg: rgba(255,255,255,0.07);
+      --text: #EEE;
+      --subtext: #BBB;
+      --primary: #00BCD4;
+      --aztech:rgb(170, 10, 238);
+      --nilpeter:rgb(0, 152, 212);
+      --nilpeter13:rgb(233, 220, 30);
+      --eti: #FF1493;
+      --slitter:rgb(210, 244, 245);
+      --aztech13:rgb(18, 230, 145);
+      --danger: #E53935;
+      --safe: #43A047;
     }
     body {
+      min-height: 100vh;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
       display: flex;
       flex-direction: column;
-      align-items: stretch;
+      align-items: center;
+      padding: 0.7rem;
     }
-
-    h1 {
-      text-align: center;
-      margin: 10px 0;
-      font-size: 1.8em;
+    .company-footage-bar {
+      width: 98vw; max-width: 1200px; margin: 0 auto 1rem auto;
+      background: #232f36; border-radius: 0.7rem; box-shadow: 0 1.5px 10px 0 rgba(0,188,212,0.10);
+      padding: 0.7rem 1rem 0.85rem 1rem;
+      display: flex; flex-direction: column; align-items: stretch; position: relative; z-index: 2;
     }
-
-    /* SHIFT BAR & GOAL BAR: Full width with slight margin */
-    .shift-progress-container,
-    .goal-container,
-    .shift-info,
-    .net-info {
-      width: calc(100% - 20px);
-      margin: 0 auto 5px;
-    }
-    .shift-progress-container {
-      height: 15px;
-      background-color: #eee;
-      border-radius: 8px;
-      overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      position: relative;
-    }
-    .shift-progress-bar {
-      height: 100%;
-      width: 0%;
-      background: #58a;
-      transition: width 0.6s ease-in-out;
-    }
-    .shift-info {
-      text-align: center;
-      margin-bottom: 10px;
-      font-weight: 600;
-    }
-    .goal-container {
-      height: 20px;
-      background-color: #ccc;
-      border-radius: 8px;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
-    .goal-net {
-      position: absolute;
-      top: 0; left: 0;
-      height: 100%;
-      background-color: #4CAF50;
-      transition: width 0.6s;
-    }
-    .goal-waste {
-      position: absolute;
-      top: 0;
-      height: 100%;
-      background-color: #F44336;
-      transition: width 0.6s;
-    }
-    .net-info {
-      text-align: center;
-      margin-bottom: 10px;
-      font-size: 1.2em;
-      font-weight: bold;
-    }
-
-    /* MAIN CHARTS AREA => 2 columns: left big daily, right has weekly on top + speed on bottom */
-    .charts-container {
-      display: flex;
-      flex: 1; /* fill remaining vertical space */
-      width: 100%;
-      gap: 10px;
-      padding: 10px;
+    .company-footage-main { display: flex; align-items: baseline; gap: 0.7rem; font-size: 1.33rem; font-weight: 800; color: var(--primary); margin-bottom: 0.15rem; flex-wrap: wrap;}
+    .big-number { font-size: 2.1rem; font-weight: 900; color: var(--primary); min-width: 105px; text-align: right; }
+    .company-goal-bar { width: 100%; background: #223239; border-radius: 0.45rem; height: 1.18rem; overflow: hidden; margin-top: 0.19rem; position: relative; display: flex; }
+    .goal-fill-nilpeter, .goal-fill-aztech, .goal-fill-eti, .goal-fill-aztech13, .goal-fill-slitter { height: 100%; position: absolute; top: 0; z-index: 1; transition: width 0.7s cubic-bezier(.4,2,.3,1);}
+    .goal-fill-nilpeter { background: var(--nilpeter); border-radius: 0.45rem 0 0 0.45rem; left: 0; }
+    .goal-fill-aztech { background: var(--aztech); }
+    .goal-fill-eti { background: var(--eti); }
+    .goal-fill-aztech13 { background: var(--aztech13);}
+    .goal-fill-slitter { background: var(--slitter);}
+    .goal-percent-label { position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%); color: #fff; font-weight: 700; font-size: 0.95rem; z-index: 2; text-shadow: 0 1px 6px #0008; }
+    .dashboard-main-flex { width: 98vw; max-width: 1200px; display: flex; gap: 1.2rem; align-items: flex-start; justify-content: center; flex-wrap: wrap;}
+    .chart-panel { flex: 3 1 350px; max-width: 100%; min-width: 280px;}
+    .chart-card { background: var(--card-bg); border-radius: 1.2rem; padding: 1rem 1.2rem; margin-bottom: 0.2rem; }
+    #footageChart { width: 100% !important; height: 500px !important; }
+    .speed-cards-container { display: flex; flex-direction: column; gap: 1.2rem; min-width: 220px; max-width: 400px; width: 100%; }
+    .card.speed-card {
+      flex: 1 1 0;
+      min-width: 170px; width: 100%; text-align: center; position: relative;
+      padding: 0.65rem 0.7rem 0.4rem 0.7rem;
+      background: var(--card-bg); border-radius: 1rem; box-shadow: 0 4px 30px rgba(0,0,0,0.19);
+      margin-bottom: 0.08rem; transition: box-shadow 0.6s, border 0.6s;
       box-sizing: border-box;
     }
-    /* Left column => daily chart. Right column => two smaller charts stacked. */
-    .left-column {
-      display: flex;
-      flex-direction: column;
-      flex: 2; /* bigger area for daily chart */
-      gap: 10px;
+    .speed-card.danger {
+      box-shadow: 0 0 24px 4px var(--danger), 0 1.5px 10px 0 rgba(0,0,0,0.17);
+      border: 2.8px solid var(--danger);
+      animation: card-glow 1.25s alternate infinite;
     }
-    .right-column {
-      display: flex;
-      flex-direction: column;
-      flex: 1; /* narrower column */
-      gap: 10px;
+    @keyframes card-glow {
+      0%   { box-shadow: 0 0 24px 4px var(--danger), 0 1.5px 10px 0 rgba(0,0,0,0.12);}
+      100% { box-shadow: 0 0 48px 9px var(--danger), 0 1.5px 20px 0 rgba(0,0,0,0.14);}
     }
-
-    /* Chart wrapper => so each chart can fill the container */
-    .chart-wrapper {
-      min-height: 200px;     /* or whatever you want */
-      max-height: 900px;     /* optional limit */
-      position: relative;    /* so the canvas can fill its container */
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      overflow: hidden;
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      padding: 5px;
+    .press-header-row { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; font-size: 1.1rem; margin-bottom: 0.18rem;}
+    .press-name-strong { font-weight: 800; font-size: 1rem; }
+    .total-footage-strong { font-size: 1.23rem; font-weight: 900; color: var(--primary);}
+    .speed-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 0.6rem; margin-bottom: 0.1rem; flex-direction: row-reverse;
     }
-    /* Canvas takes entire chart wrapper space */
-    canvas {
-      width: 100% !important;
-      height: 100% !important;
+    .speed-indicator { width: 14px; height: 14px; border-radius: 50%; border: 1.2px solid #202628; display: inline-block; transition: background 1.2s, box-shadow 1.2s;}
+    .speed-indicator.red { background: #E53935; animation: speedpulse-red 2.2s cubic-bezier(.5,0,.5,1) infinite alternate;}
+    .speed-indicator.yellow { background: #FDD835; animation: speedpulse-yellow 1s cubic-bezier(.6,.2,0,1) infinite alternate;}
+    .speed-indicator.green { background: #43A047; animation: speedpulse-green 1s cubic-bezier(.6,.2,0,1) infinite alternate;}
+    .speed-indicator.bright-green { background: #32fc6c; animation: speedpulse-bright 1s cubic-bezier(.6,.2,0,1) infinite alternate;}
+    @keyframes speedpulse-red {0%{box-shadow:0 0 4px 1px #e5393550;}55%{box-shadow:0 0 22px 8px #e53935fa;}100%{box-shadow:0 0 10px 4px #e5393585;}}
+    @keyframes speedpulse-yellow {0%{box-shadow:0 0 1.5px 0px #fdd83545;}60%{box-shadow:0 0 8px 3px #fdd835a0;}100%{box-shadow:0 0 4px 1px #fdd8357a;}}
+    @keyframes speedpulse-green {0%{box-shadow:0 0 1.5px 0px #43a04734;}60%{box-shadow:0 0 7px 2.5px #43a04785;}100%{box-shadow:0 0 3.5px 1px #43a0474d;}}
+    @keyframes speedpulse-bright {0%{box-shadow:0 0 2px 0.5px #56ff9260;}60%{box-shadow:0 0 8.5px 3px #56ff92b7;}100%{box-shadow:0 0 5.5px 2px #56ff927a;}}
+    .speed-value { font-size: 1.18rem; font-weight: 900; min-width: 46px; text-align: right; }
+    .progress-bar { flex: 1; height: 0.55rem; background: #333; border-radius: 0.25rem; overflow: hidden; margin-right: 0.5rem; min-width: 40px;}
+    .progress-bar .fill { height: 100%; width: 0; transition: width 1s, background 0.5s;}
+    .fill.red { background: #E53935 !important; }
+    .fill.yellow { background: #FDD835 !important; }
+    .fill.green { background: #43A047 !important; }
+    .fill.bright-green { background: #32fc6c !important; }
+    .downtime-total-label {
+      display: flex; align-items: center; justify-content: center; gap: 0.32em;
+      font-size: 1rem; color: var(--subtext); font-weight: 700; margin-top: 0.18rem;
     }
-
-    /* Glow plugin for zero-speed bars */
-    .metric-value {
-      transition: color 1s;
+    .downtime-icon {
+      display: inline-block; vertical-align: middle; font-size: 1.3em; color: #FDD835; margin-right: 0.12em;
+      filter: drop-shadow(0 1px 1.2px #0007);
+    }
+    .down-warning {
+      color: var(--danger);
+      font-weight: 800;
+      font-size: 1.04rem;
+      margin: 0.25rem 0 0.09rem 0;
+      letter-spacing: 0.02em;
+      text-shadow: 0 2px 8px #e5393523;
+      animation: card-glow 1.05s alternate infinite;
+      display: flex; align-items: center; justify-content: center; gap: 0.2em;
+    }
+    @media (max-width: 1000px) {
+      .dashboard-main-flex { flex-direction: column; gap: 1.2rem; }
+      .chart-panel, .speed-cards-container { max-width: 100vw; }
+    }
+    @media (max-width: 650px) {
+      .company-footage-bar, .speed-cards-container { max-width: 100vw; min-width: unset; }
+      .speed-card { min-width: 98vw; max-width: 100vw;}
+      .company-footage-main { font-size: 1rem; flex-direction: column;}
+      .big-number { font-size: 1.45rem; min-width: 70px;}
+      #footageChart { height: 220px !important; }
+      .chart-card { padding: 0.3rem 0.2rem; }
+      .speed-row { flex-direction: column-reverse; gap: 0.2rem; }
+      .progress-bar { margin: 0; width: 100%; min-width: unset; }
+      .speed-value { text-align: center; }
+    }
+    @keyframes casino-flash {
+      0%, 100% { background: linear-gradient(90deg, #ffe066 20%, #fff8dc 80%); color: #fff8dc; box-shadow: 0 0 8px 2px #ffe06670; }
+      30% { background: linear-gradient(90deg, #fff8dc 30%, #ffe066 70%); color: #ffd700; box-shadow: 0 0 18px 6px #ffd70066; }
+      60% { background: linear-gradient(90deg, #ffe066 70%, #fff8dc 100%); color: #fff8dc; box-shadow: 0 0 14px 4px #fff8dc55; }
+    }
+    .goal-hit, .goal-over {
+      background: var(--card-bg);
+      color: #ffd700 !important;
+      box-shadow: 0 0 16px 4px #ffd70080, 0 0 0px 0px #fff8dc00;
+      border-radius: 0.7rem;
+      transition: box-shadow 0.8s;
+    }
+    .goal-hit .goal-percent-label,
+    .goal-over .goal-percent-label {
+      color: #ffd700 !important;
+      text-shadow: 0 0 6px #ffd70077, 0 0 12px #fff8dc33;
+    }
+    #company-footage-message .goal-hit, #company-footage-message .goal-over {
+      font-weight: 800;
+      color: #ffd700;
+      text-shadow: 0 0 10px #ffd70044, 0 0 16px #fff8dc44;
     }
   </style>
 </head>
 <body>
-
-  <!-- SHIFT BAR -->
-  <div class="shift-progress-container">
-    <div class="shift-progress-bar" id="shiftProgressBar"></div>
+  <div class="company-footage-bar" id="company-footage-bar">
+    <div class="company-footage-main" id="company-footage-main">
+      <span>Total Company Footage:</span>
+      <span class="big-number" id="company-footage-val">0</span>
+      <span id="company-footage-message" style="font-size:1.05rem;"></span>
+    </div>
+    <div class="company-goal-bar" id="company-goal-bar">
+      <div class="goal-fill-eti" id="goal-fill-eti"></div>
+      <div class="goal-fill-nilpeter" id="goal-fill-nilpeter"></div>
+      <div class="goal-fill-aztech" id="goal-fill-aztech"></div>
+      <div class="goal-fill-aztech13" id="goal-fill-aztech13"></div>
+      <div class="goal-fill-slitter" id="goal-fill-slitter"></div>
+      <span class="goal-percent-label" id="goal-percent-label">0%</span>
+    </div>
   </div>
-  <div class="shift-info" id="shiftInfo">Loading shift info...</div>
-
-  <!-- GOAL BAR (net vs. 300k) -->
-  <div class="goal-container">
-    <div class="goal-net" id="goalNet"></div>
-    <div class="goal-waste" id="goalWaste"></div>
-  </div>
-  <!-- Net production + % of goal -->
-  <div class="net-info">
-    Net Production:
-    <span id="netProduction" data-old-value="0">0</span> ft
-    (<span id="goalPercentage" data-old-value="0">0</span>% of goal)
-  </div>
-
-  <!-- MAIN CHARTS: left => daily, right => weekly (top) + speed (bottom) -->
-  <div class="charts-container">
-    <div class="left-column">
-      <!-- DAILY FOOTAGE -->
-      <div class="chart-wrapper">
+  <div class="dashboard-main-flex">
+    <div class="speed-cards-container">
+      <!-- ETI -->
+      <div class="card speed-card" id="speed-widget-ETI" style="cursor:pointer;" onclick="window.location.href='eti.html'">
+        <div class="press-header-row">
+          <span id="speed-indicator-ETI" class="speed-indicator"></span>
+          <span class="press-name-strong" id="press-name-ETI">ETI</span>
+          <span class="total-footage-strong big-number" id="total-footage-ETI">0</span>
+        </div>
+        <div class="speed-row">
+          <span id="speed-value-ETI" class="speed-value big-number">0</span>
+          <div class="progress-bar"><div id="speed-fill-ETI" class="fill"></div></div>
+        </div>
+        <span id="total-downtime-ETI" class="downtime-total-label"></span>
+        <div id="down-warning-ETI" class="down-warning" style="display:none;"></div>
+      </div>
+      <!-- 17" Nilpeter -->
+      <div class="card speed-card" id="speed-widget-17">
+        <div class="press-header-row">
+          <span id="speed-indicator-17" class="speed-indicator"></span>
+          <span class="press-name-strong" id="press-name-17">17" Nilpeter</span>
+          <span class="total-footage-strong big-number" id="total-footage-17">0</span>
+        </div>
+        <div class="speed-row">
+          <span id="speed-value-17" class="speed-value big-number">0</span>
+          <div class="progress-bar"><div id="speed-fill-17" class="fill"></div></div>
+        </div>
+        <span id="total-downtime-17" class="downtime-total-label"></span>
+        <div id="down-warning-17" class="down-warning" style="display:none;"></div>
+      </div>
+      <!-- 18" Aztech -->
+      <div class="card speed-card" id="speed-widget-18">
+        <div class="press-header-row">
+          <span id="speed-indicator-18" class="speed-indicator"></span>
+          <span class="press-name-strong" id="press-name-18">18" Aztech</span>
+          <span class="total-footage-strong big-number" id="total-footage-18">0</span>
+        </div>
+        <div class="speed-row">
+          <span id="speed-value-18" class="speed-value big-number">0</span>
+          <div class="progress-bar"><div id="speed-fill-18" class="fill"></div></div>
+        </div>
+        <span id="total-downtime-18" class="downtime-total-label"></span>
+        <div id="down-warning-18" class="down-warning" style="display:none;"></div>
+      </div>
+      <!-- 13AZTECH -->
+      <div class="card speed-card" id="speed-widget-13AZTECH">
+        <div class="press-header-row">
+          <span id="speed-indicator-13AZTECH" class="speed-indicator"></span>
+          <span class="press-name-strong" id="press-name-13AZTECH">13AZTECH</span>
+          <span class="total-footage-strong big-number" id="total-footage-13AZTECH">0</span>
+        </div>
+        <div class="speed-row">
+          <span id="speed-value-13AZTECH" class="speed-value big-number">0</span>
+          <div class="progress-bar"><div id="speed-fill-13AZTECH" class="fill"></div></div>
+        </div>
+        <span id="total-downtime-13AZTECH" class="downtime-total-label"></span>
+        <div id="down-warning-13AZTECH" class="down-warning" style="display:none;"></div>
+      </div>
+      <!-- 13NILPETER -->
+      <div class="card speed-card" id="speed-widget-13NILPETER">
+        <div class="press-header-row">
+          <span id="speed-indicator-13NILPETER" class="speed-indicator"></span>
+          <span class="press-name-strong" id="press-name-13NILPETER">13NILPETER</span>
+          <span class="total-footage-strong big-number" id="total-footage-13NILPETER">0</span>
+        </div>
+        <div class="speed-row">
+          <span id="speed-value-13NILPETER" class="speed-value big-number">0</span>
+          <div class="progress-bar"><div id="speed-fill-13NILPETER" class="fill"></div></div>
+        </div>
+        <span id="total-downtime-13NILPETER" class="downtime-total-label"></span>
+        <div id="down-warning-13NILPETER" class="down-warning" style="display:none;"></div>
+      </div>
+      <!-- SLITTER -->
+      <div class="card speed-card" id="speed-widget-SLITTER">
+        <div class="press-header-row">
+          <span id="speed-indicator-SLITTER" class="speed-indicator"></span>
+          <span class="press-name-strong" id="press-name-SLITTER">SLITTER</span>
+          <span class="total-footage-strong big-number" id="total-footage-SLITTER">0</span>
+        </div>
+        <div class="speed-row">
+          <span id="speed-value-SLITTER" class="speed-value big-number">0</span>
+          <div class="progress-bar"><div id="speed-fill-SLITTER" class="fill"></div></div>
+        </div>
+        <span id="total-downtime-SLITTER" class="downtime-total-label"></span>
+        <div id="down-warning-SLITTER" class="down-warning" style="display:none;"></div>
+      </div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-card">
+        <h2 style="color:var(--subtext);font-size:1.15rem;margin:0 0 0.3em 0;font-weight:600;">Daily Footage</h2>
         <canvas id="footageChart"></canvas>
       </div>
     </div>
-    <div class="right-column">
-      <!-- WEEKLY -->
-      <div class="chart-wrapper">
-        <canvas id="weeklyChart"></canvas>
-      </div>
-      <!-- SPEED (horizontal) -->
-      <div class="chart-wrapper">
-        <canvas id="speedBarChart"></canvas>
-      </div>
-    </div>
   </div>
-
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <script>
-    // ----------------------------------------------------------------------------
-    // (A) FIREBASE INIT
-    // ----------------------------------------------------------------------------
-    var firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "realtime-database-8bbe2.com",
-      databaseURL: "https://realtime-database-8bbe2-default-rtdb.firebaseio.com",
-      projectId: "realtime-database-8bbe2",
-      storageBucket: "YOUR_PROJECT_ID",
-      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
-    firebase.initializeApp(firebaseConfig);
-
-    // ----------------------------------------------------------------------------
-    // (B) SHIFT PROGRESS BAR
-    // ----------------------------------------------------------------------------
-    function getCurrentShiftInfo(){
-      // Example shift: 5:00 AM to 5:00 PM
+    function getDowntimeWindow() {
       const now = new Date();
-      const cm = now.getHours()*60 + now.getMinutes();
-      const ds = 5*60, de = 17*60;
-      let shiftName, shiftStart, shiftEnd;
-      if(cm>=ds && cm<de){
-        shiftName = "Day Shift";
-        shiftStart = new Date(now); shiftStart.setHours(5,0,0,0);
-        shiftEnd   = new Date(now); shiftEnd.setHours(17,0,0,0);
-      } else {
-        shiftName = "Night Shift";
-        shiftStart = new Date(now); shiftStart.setHours(17,0,0,0);
-        shiftEnd   = new Date(now);
-        shiftEnd.setDate(shiftEnd.getDate()+1);
-        shiftEnd.setHours(5,0,0,0);
-      }
-      return { shiftName, shiftStart, shiftEnd };
+      let base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      let start = new Date(base.getTime());
+      start.setHours(6, 0, 0, 0); // 6:00 AM
+      let end = new Date(start.getTime());
+      end.setDate(start.getDate() + 1);
+      end.setHours(2, 30, 0, 0); // 2:30 AM next day
+      return {start, end};
     }
-
-    function updateShiftBar(){
-      const {shiftName, shiftStart, shiftEnd} = getCurrentShiftInfo();
-      const now = new Date();
-      const totalMs = shiftEnd - shiftStart;
-      let usedMs = now - shiftStart;
-      usedMs = Math.max(0, usedMs);
-      usedMs = Math.min(totalMs, usedMs);
-
-      const fractionUsed = usedMs / totalMs;
-      const pctUsed = (fractionUsed*100).toFixed(2);
-
-      const bar = document.getElementById('shiftProgressBar');
-      bar.style.width = pctUsed+'%';
-
-      const remainMs = totalMs - usedMs;
-      const remainMin = Math.floor(remainMs/60000);
-      const remainH = Math.floor(remainMin/60);
-      const remainOnly = remainMin%60;
-      const info = document.getElementById('shiftInfo');
-      if(remainMs<=0){
-        info.innerText = shiftName+': Shift ended!';
-      } else {
-        info.innerText = `${shiftName}: ${remainH}h ${remainOnly}m left`;
-      }
-    }
-    updateShiftBar();
-    setInterval(updateShiftBar, 60000);
-
-    // ----------------------------------------------------------------------------
-    // (C) DAILY FOOTAGE (LINE CHART)
-    // ----------------------------------------------------------------------------
-    const dailyCtx = document.getElementById('footageChart').getContext('2d');
-    const footageChart = new Chart(dailyCtx, {
-      type: 'line',
-      data: {
-        datasets: [
-          { label: '17 Nilpeter', data: [], borderColor: '#4CAF50',
-            backgroundColor: 'rgba(76,175,80,0.1)', fill: false, tension: 0.4,
-            pointRadius: 0, pointHoverRadius: 0, borderWidth: 4 },
-          { label: '18" Aztech', data: [], borderColor: '#2196F3',
-            backgroundColor: 'rgba(33,150,243,0.1)', fill: false, tension: 0.4,
-            pointRadius: 0, pointHoverRadius: 0, borderWidth: 4 },
-          { label: '13 Nilpeter', data: [], borderColor: '#FF9800',
-            backgroundColor: 'rgba(255,152,0,0.1)', fill: false, tension: 0.4,
-            pointRadius: 0, pointHoverRadius: 0, borderWidth: 4 },
-          { label: 'ETI', data: [], borderColor: '#9C27B0',
-            backgroundColor: 'rgba(156,39,176,0.1)', fill: false, tension: 0.4,
-            pointRadius: 0, pointHoverRadius: 0, borderWidth: 4 },
-          { label: 'Slitter', data: [], borderColor: '#FF00FF',
-            backgroundColor: 'rgba(156,39,176,0.1)', fill: false, tension: 0.4,
-            pointRadius: 0, pointHoverRadius: 0, borderWidth: 4 },
-          { label: '13 Aztech', data: [], borderColor: '#00AAAA',
-            backgroundColor: 'rgba(0,170,170,0.1)', fill: false, tension: 0.4,
-            pointRadius: 0, pointHoverRadius: 0, borderWidth: 4 }
-        ]
+    const PRESSES = [
+      {
+        name: 'ETI',
+        id: 'ETI',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--eti').trim(),
+        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_CURRENT_SPEED.json',
+        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_DAILY_SPEED.json'
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: {
-          duration: 600,
-          easing: 'easeOutCubic'
-        },
-        plugins: {
-          legend: { display:true, position:'top' },
-          title: { display:false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => `${ctx.parsed.y.toLocaleString()} ft`
-            }
-          }
-        },
-        scales: {
-          x: {
-            type: 'time',
-            time: { unit:'hour' },
-            ticks: { color:'#333', font:{ size:12 } }
-          },
-          y: {
-            beginAtZero: true,
-            ticks: { color:'#333', font:{ size:12 } }
-          }
-        }
-      }
-    });
-
-    // ----------------------------------------------------------------------------
-    // (D) WEEKLY CHART (STACKED BAR, 5AM→4:59AM)
-    // ----------------------------------------------------------------------------
-    const weeklyCtx = document.getElementById('weeklyChart').getContext('2d');
-    // We'll store dayIndex=0 => "today," dayIndex=1 => "yesterday," etc. 
-    // Each press has a 7-element array, sums of the day.
-    let weeklyData = {
-      nilpeter:   [0,0,0,0,0,0,0],
-      aztech:     [0,0,0,0,0,0,0],
-      nilpeter13: [0,0,0,0,0,0,0],
-      eti:        [0,0,0,0,0,0,0],
-      slitter:    [0,0,0,0,0,0,0],
-      aztech13:   [0,0,0,0,0,0,0]
-    };
-
-    // Build an array of day labels (7 days). 
-    // For simplicity: "Apr 2", "Apr 1", ...
-    // We'll show them in descending order (6 days ago → 0 = today).
-    function buildWeekDayLabels() {
-      const ranges = buildDayRanges();
-      return ranges.map(r => {
-        const d = new Date(r.startSec * 1000);
-        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      });
-    }
-    
-
-    // Day ranges: each dayIndex from 5:00 AM => next day 4:59:59
-    function buildDayRanges() {
-      const now = new Date();
-      let lastCompleteOpDayStart = new Date(now);
-    
-      // Determine the most recent complete operational day.
-      // Operational day: 5:00 AM to 4:59:59.999 AM the next day.
-      if (now.getHours() >= 5) {
-        // After 5:00 AM: the day from yesterday 5:00 AM to today 4:59:59.999 is complete.
-        lastCompleteOpDayStart.setDate(lastCompleteOpDayStart.getDate() - 1);
-      } else {
-        // Before 5:00 AM: the current op day is still in progress.
-        // The most recent complete day is the one that ended yesterday.
-        lastCompleteOpDayStart.setDate(lastCompleteOpDayStart.getDate() - 2);
-      }
-      // Set the time to exactly 5:00 AM
-      lastCompleteOpDayStart.setHours(5, 0, 0, 0);
-    
-      // Build ranges for the last 7 complete operational days.
-      const ranges = [];
-      for (let i = 6; i >= 0; i--) {
-        const opDayStart = new Date(lastCompleteOpDayStart);
-        opDayStart.setDate(opDayStart.getDate() - i); // shift back by i days
-        // Each op day starts at 5:00 AM
-        opDayStart.setHours(5, 0, 0, 0);
-    
-        const opDayEnd = new Date(opDayStart);
-        opDayEnd.setDate(opDayEnd.getDate() + 1); // next day...
-        // ... ending at 4:59:59.999 AM
-        opDayEnd.setHours(4, 59, 59, 999);
-    
-        ranges.push({
-          dayIndex: 6 - i, // 0 = oldest, 6 = most recent complete day
-          startSec: Math.floor(opDayStart.getTime() / 1000),
-          endSec: Math.floor(opDayEnd.getTime() / 1000),
-          // Label using the start date (e.g., "4/4/2025" for the op day from 4/4/2025 5:00 AM to 4/5/2025 4:59 AM)
-          label: opDayStart.toLocaleDateString()
-        });
-      }
-      return ranges;
-    }
-    
-    // For debugging, log the computed ranges:
-    console.log("Operational Day Ranges:", buildDayRanges());
-    
-    
-    
-    
-
-    // Return which day index (0..6) a timestamp belongs to, or -1 if not in last 7 days
-    function findDayIndexForTimestamp(tsSec) {
-      const ranges = buildDayRanges();
-      // dayIndex=0 => "today," dayIndex=1 => "yesterday," etc.
-      for (const r of ranges) {
-        if (tsSec>=r.startSec && tsSec<=r.endSec) {
-          return r.dayIndex;
-        }
-      }
-      return -1;
-    }
-
-    // The stacked bar chart itself
-    const weeklyChart = new Chart(weeklyCtx, {
-      type: 'bar',
-      data: {
-        labels: buildWeekDayLabels(), // 7 labels
-        datasets: [
-          { label:'17 Nilpeter', data:[], backgroundColor:'#4CAF50' },
-          { label:'18" Aztech',  data:[], backgroundColor:'#2196F3' },
-          { label:'13 Nilpeter', data:[], backgroundColor:'#FF9800' },
-          { label:'ETI',         data:[], backgroundColor:'#9C27B0' },
-          { label:'Slitter',     data:[], backgroundColor:'#FF00FF' },
-          { label:'13 Aztech',   data:[], backgroundColor:'#00AAAA' }
-        ]
+      {
+        name: '17" Nilpeter',
+        id: '17',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--nilpeter').trim(),
+        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/17Nilpeter_CURRENT_SPEED.json',
+        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/17Nilpeter_DAILY_SPEED.json'
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: {
-          duration: 800,
-          easing: 'easeInOutCubic'
-        },
-        scales: {
-          x: {
-            stacked: true,
-            ticks: { color:'#333', font:{ size:10 } }
-          },
-          y: {
-            stacked: true,
-            beginAtZero: true,
-            ticks: { color:'#333', font:{ size:10 } }
-          }
-        },
-        plugins: {
-          legend: {
-            labels: { font:{ size:10 } }
-          },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => {
-                const val = ctx.parsed.y || 0;
-                return `${ctx.dataset.label}: ${val.toLocaleString()} ft`;
-              }
-            }
-          }
-        }
+      {
+        name: '18" Aztech',
+        id: '18',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--aztech').trim(),
+        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/18Aztech_CURRENT_SPEED.json',
+        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/18Aztech_DAILY_SPEED.json'
+      },
+      {
+        name: '13AZTECH',
+        id: '13AZTECH',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--aztech13').trim(),
+        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13AZTECH_CURRENT_SPEED.json',
+        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13AZTECH_DAILY_SPEED.json'
+      },
+      {
+        name: '13NILPETER',
+        id: '13NILPETER',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--nilpeter13').trim(),
+        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13NILPETER_CURRENT_SPEED.json',
+        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13NILPETER_DAILY_SPEED.json'
+      },
+      {
+        name: 'SLITTER',
+        id: 'SLITTER',
+        color: getComputedStyle(document.documentElement).getPropertyValue('--slitter').trim(),
+        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/SLITTER_CURRENT_SPEED.json',
+        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/SLITTER_DAILY_SPEED.json'
       }
-    });
-
-    function updateWeeklyChart() {
-      const ds = weeklyChart.data.datasets;
-      ds[0].data = weeklyData.nilpeter;
-      ds[1].data = weeklyData.aztech;
-      ds[2].data = weeklyData.nilpeter13;
-      ds[3].data = weeklyData.eti;
-      ds[4].data = weeklyData.slitter;
-      ds[5].data = weeklyData.aztech13;
-
-      weeklyChart.update();
-    }
-
-    // ----------------------------------------------------------------------------
-    // (E) SPEED CHART (HORIZONTAL), WITH SMOOTH GRADIENT COLOR
-    // ----------------------------------------------------------------------------
-    const speedCtx = document.getElementById('speedBarChart').getContext('2d');
-    const pressLabels = [
-      '17 Nilpeter','18" Aztech','13 Nilpeter','ETI','Slitter','13 Aztech'
     ];
-    const speedData = [0,0,0,0,0,0];
+    const COMPANY_GOAL = 300000;
+    const REPORT_INTERVAL_SEC = 10;
+    const DOWNTIME_THRESHOLD = 0.01;
 
-    // Smooth color interpolation from red -> yellow -> green
-    // We'll clamp 0..300 ft/min for color range
-    // 0 => #ff0000, 150 => #ffff00, 300 => #00ff00
-    function interpolateColor(c1, c2, ratio) {
-      const r = Math.round(c1[0] + (c2[0]-c1[0])*ratio);
-      const g = Math.round(c1[1] + (c2[1]-c1[1])*ratio);
-      const b = Math.round(c1[2] + (c2[2]-c1[2])*ratio);
-      return `rgb(${r},${g},${b})`;
+    function animateNumber(el, to, duration=7000) {
+      let from = Number((el.textContent || "0").replace(/,/g,"")) || 0;
+      if (Math.abs(to - from) < 1) { el.textContent = to.toLocaleString(); return; }
+      let start = performance.now();
+      function step(now) {
+        let t = Math.min((now - start) / duration, 1);
+        let eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        let val = Math.round(from + (to - from) * eased);
+        el.textContent = val.toLocaleString();
+        if (t < 1) requestAnimationFrame(step);
+        else el.textContent = Math.round(to).toLocaleString();
+      }
+      requestAnimationFrame(step);
     }
-    function getSpeedColor(speedVal) {
-      if (speedVal <= 0) {
-        // fully red
-        return 'rgb(255,0,0)';
-      }
-      if (speedVal >= 300) {
-        // fully green
-        return 'rgb(0,255,0)';
-      }
-      // We break the 0..300 range into two segments: 0..150 (red -> yellow), 150..300 (yellow -> green)
-      if (speedVal <= 150) {
-        const ratio = speedVal / 150; // 0..1
-        // red => #ff0000, yellow => #ffff00
-        return interpolateColor([255,0,0],[255,255,0], ratio);
-      } else {
-        const ratio = (speedVal-150)/150; 
-        // yellow => #ffff00, green => #00ff00
-        return interpolateColor([255,255,0],[0,255,0], ratio);
-      }
+    function cleanEntries(raw, dStart, dEnd) {
+      return Object.values(raw || {})
+        .map(v => {
+          if (v.timestamp == null || v.footage == null) return null;
+          let ts = Number(v.timestamp) * 1000;
+          if (isNaN(ts)) return null;
+          return { ts, footage: v.footage };
+        })
+        .filter(e => e && e.ts >= dStart.getTime() && e.ts < dEnd.getTime())
+        .sort((a, b) => a.ts - b.ts);
     }
 
-    // A plugin for “stopped glow” if speed=0
-    const glowPlugin = {
-      id: 'glowPlugin',
-      beforeDraw(chart) {
-        const { ctx } = chart;
-        const meta = chart.getDatasetMeta(0);
-        meta.data.forEach((bar, index)=>{
-          const spVal = chart.data.datasets[0].data[index];
-          if(spVal===0){
-            const { x, y } = bar.getProps(['x','y'], true);
-            const { base } = bar.getProps(['base'], true);
-            const barWidth = base - x;
-            const barHeight = bar.height;
-            ctx.save();
-            ctx.shadowColor = 'rgba(255, 0, 0, 0.6)';
-            ctx.shadowBlur = 15;
-            ctx.strokeStyle = 'rgba(255, 0, 0, 0)';
-            ctx.lineWidth = 8;
-            ctx.strokeRect(x, y - barHeight/2, barWidth, barHeight);
-            ctx.restore();
-          }
-        });
-      }
-    };
-
-    const speedBarChart = new Chart(speedCtx, {
-      type: 'bar',
-      data: {
-        labels: pressLabels,
-        datasets: [
-          {
-            label: 'Current Speed (ft/min)',
-            data: speedData,
-            borderWidth: 1,
-            borderColor: '#444',
-            // Use our gradient color function
-            backgroundColor: (ctx)=>{
-              const val = ctx.parsed.x||0;
-              return getSpeedColor(val);
-            }
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        indexAxis: 'y', // horizontal
-        animation: { duration: 1500, easing: 'easeInOutCubic' },
-        scales: {
-          x: {
-            beginAtZero: true,
-            ticks: { color:'#333', font:{ size:10 } },
-            title: { display:true, text:'Speed (ft/min)', font:{ size:12 } }
-          },
-          y: {
-            ticks: { color:'#333', font:{ size:10 } }
-          }
+    let footageChart;
+    function setupFootageChart() {
+      const ctx = document.getElementById('footageChart').getContext('2d');
+      footageChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: PRESSES.map(press => ({
+            label: press.name,
+            data: [],
+            fill: false,
+            borderWidth: 2,
+            tension: 0.3,
+            borderColor: press.color,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            pointBackgroundColor: press.color
+          }))
         },
-        plugins: {
-          legend: {
-            display: true,
-            labels: { font:{ size:10 } }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: true }
           },
-          tooltip: {
-            callbacks: {
-              label: (ctx)=>{
-                const sp = ctx.parsed.x;
-                return sp + ' ft/min';
-              }
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'hour', displayFormats: { hour: 'ha' } },
+              ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text') },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            },
+            y: {
+              ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--text'), font: { size: 16 } },
+              grid: { color: 'rgba(255,255,255,0.1)' }
             }
-          }
+          },
+          animation: { duration: 220, easing: 'easeOutQuart' }
         }
-      },
-      plugins: [glowPlugin]
-    });
-
-    // Helper to set speed for a press
-    function setPressSpeed(pressId, val){
-      const indexMap = {
-        nilpeter:    0,
-        aztech:      1,
-        nilpeter13:  2,
-        eti:         3,
-        slitter:     4,
-        aztech13:    5
-      };
-      if (typeof indexMap[pressId]==='undefined') return;
-      speedData[indexMap[pressId]] = val;
-      speedBarChart.update();
+      });
     }
 
-    // ----------------------------------------------------------------------------
-    // (F) ANIMATE NUMBER + NET PRODUCTION
-    // ----------------------------------------------------------------------------
-    function animateNumber(elem, start, end, duration=15000){
-      const startTime = performance.now();
-      function tick(now){
-        const progress = (now - startTime)/duration;
-        if(progress < 1){
-          const currentVal = start + (end - start)*progress;
-          elem.innerText = Math.round(currentVal).toLocaleString();
-          requestAnimationFrame(tick);
-        } else {
-          elem.innerText = Math.round(end).toLocaleString();
-        }
-      }
-      requestAnimationFrame(tick);
-    }
-
-    const pressFootages = {
-      nilpeter:   0,
-      aztech:     0,
-      nilpeter13: 0,
-      eti:        0,
-      slitter:    0,
-      aztech13:   0
-    };
-    const GOAL = 300000;
-
-    function updateNetProduction(){
-      const sum = Object.values(pressFootages).reduce((a,b)=>a+b, 0);
-      const waste = sum * 0.03;
-      const net   = sum - waste;
-
-      const netElem = document.getElementById('netProduction');
-      if(netElem){
-        const oldNet = parseFloat(netElem.dataset.oldValue) || 0;
-        animateNumber(netElem, oldNet, net);
-        netElem.dataset.oldValue = net;
-      }
-
-      const percElem = document.getElementById('goalPercentage');
-      if(percElem){
-        const oldPerc = parseFloat(percElem.dataset.oldValue) || 0;
-        const newPerc = (net/GOAL)*100;
-        animateNumber(percElem, oldPerc, newPerc);
-        percElem.dataset.oldValue = newPerc;
-      }
-
-      // update goal bar
-      const barNet = document.getElementById('goalNet');
-      const barWaste = document.getElementById('goalWaste');
-      if(!barNet || !barWaste) return;
-      if(net <= 0){
-        barNet.style.width = '0%';
-        barWaste.style.width = '0%';
-        return;
-      }
-      const fillPct = Math.min(1, net/GOAL)*100;
-      const greenPct = fillPct*0.97;
-      const redPct   = fillPct*0.03;
-      barNet.style.width  = greenPct.toFixed(2)+'%';
-      barWaste.style.left = greenPct.toFixed(2)+'%';
-      barWaste.style.width= redPct.toFixed(2)+'%';
-    }
-
-    // ----------------------------------------------------------------------------
-    // (G) LISTENERS: DAILY FOOTAGE + WEEKLY + SPEED
-    // ----------------------------------------------------------------------------
-    const offsetHours = -3; // example offset for daily chart
-    const offsetMs    = offsetHours * 3600*1000;
-
-    // (G1) Daily Footage
-    function setupDailyFootageListener(pressPath, datasetIndex, pressId){
-      firebase.database().ref(`${pressPath}/daily_footage`).on('value', snapshot=>{
-        const data = snapshot.val();
-        if(!data){
-          footageChart.data.datasets[datasetIndex].data = [];
-          footageChart.update();
-          updateFootage(pressId, 0);
-          return;
-        }
-        let records = [];
-        if(typeof data==='object' && !Array.isArray(data)){
-          for(let k in data){
-            if(Object.prototype.hasOwnProperty.call(data,k)){
-              records.push(data[k]);
-            }
-          }
-        } else {
-          records = Array.isArray(data)? data:[data];
-        }
-        records.sort((a,b)=>Number(a.timestamp)-Number(b.timestamp));
-
-        // filter out pulses > 720 if needed
-        let cumulative=0;
-        const filtered = records.filter(r=>{
-          const fsls = Number(r.footageSinceLastSend)||0;
-          return fsls<=720;
+    async function fetchAllData() {
+      const {start: downtimeStart, end: downtimeEnd} = getDowntimeWindow();
+      const results = await Promise.all(
+        PRESSES.map(press =>
+          Promise.all([
+            fetch(press.SPEED_URL).then(r => r.json()).catch(() => null),
+            fetch(press.FOOTAGE_URL).then(r => r.json()).catch(() => null)
+          ])
+        )
+      );
+      let pressTotals = [];
+      let chartData = [];
+      await Promise.all(results.map(async (res, idx) => {
+        const [speedData, footageData] = res;
+        const press = PRESSES[idx];
+        const currentSpeed = speedData?.currentSpeed || 0;
+        let arr = cleanEntries(footageData, downtimeStart, downtimeEnd);
+        let lastCum = 0;
+        let chartPoints = [];
+        arr.forEach(e => {
+          lastCum += Number(e.footage);
+          chartPoints.push({ x: new Date(e.ts), y: lastCum });
         });
-        const chartData = filtered.map(r=>{
-          const rawMs = (Number(r.timestamp)||0)*1000;
-          const correctedMs = rawMs + offsetMs;
-          cumulative += (Number(r.footageSinceLastSend)||0);
-          return { x:new Date(correctedMs), y:cumulative };
-        });
+        chartData.push(chartPoints);
+        pressTotals.push(lastCum);
 
-        footageChart.data.datasets[datasetIndex].data = chartData;
-        footageChart.update();
-        updateFootage(pressId, cumulative);
-      });
-    }
-
-    // (G2) Weekly Aggregation from two_hour_footage, 5AM→4:59 next day
-    function setupWeeklyFootageListener(pressPath, pressId){
-      firebase.database().ref(`${pressPath}/two_hour_footage`).on('value', snapshot=>{
-        const data = snapshot.val();
-        if(!data){
-          weeklyData[pressId] = [0,0,0,0,0,0,0];
-          updateWeeklyChart();
-          return;
-        }
-        let records = [];
-        if(typeof data==='object' && !Array.isArray(data)){
-          for(let k in data){
-            if(Object.prototype.hasOwnProperty.call(data,k)){
-              records.push(data[k]);
-            }
-          }
-        } else {
-          records = Array.isArray(data)? data:[data];
-        }
-        records.sort((a,b)=>Number(a.timestamp)-Number(b.timestamp));
-
-        // sum up
-        const sums = [0,0,0,0,0,0,0];
-        for(const r of records){
-          const tsSec = Number(r.timestamp)||0;
-          const fsls  = Number(r.footageSinceLastSend)||0;
-          const idx   = findDayIndexForTimestamp(tsSec);
-          if(idx>=0 && idx<7){
-            sums[idx]+= fsls;
+        // --- DOWNTIME LOGIC (only current, last 30 min) ---
+        let rightNow = new Date();
+        let intervalMs = REPORT_INTERVAL_SEC * 1000;
+        let timePtr = downtimeStart.getTime();
+        let arrIdx = 0;
+        let totalDowntimeMin = 0;
+        let currentDownMin = 0;
+        let isCurrentlyDown = false;
+        // Find when last *up* state was, then count continuous downtime
+        let lastFootageTs = null;
+        for (let i = arr.length - 1; i >= 0; i--) {
+          if (arr[i].footage > DOWNTIME_THRESHOLD) {
+            lastFootageTs = arr[i].ts;
+            break;
           }
         }
-        weeklyData[pressId] = sums;
-        updateWeeklyChart();
+        // Is the press currently down? (most recent point footage <= threshold, or no data yet)
+        if (
+          arr.length === 0 ||
+          arr[arr.length-1].footage <= DOWNTIME_THRESHOLD
+        ) {
+          isCurrentlyDown = true;
+          let downSince = lastFootageTs ? lastFootageTs : downtimeStart.getTime();
+          currentDownMin = Math.round((rightNow.getTime() - downSince) / (60*1000));
+        }
+        // Compute total downtime for the shift
+        timePtr = downtimeStart.getTime();
+        arrIdx = 0;
+        while (timePtr < rightNow.getTime() && timePtr < downtimeEnd.getTime()) {
+          let windowEnd = timePtr + intervalMs;
+          let rec = arr[arrIdx];
+          let downtime = false;
+          if (rec && rec.ts >= timePtr && rec.ts < windowEnd) {
+            if (Number(rec.footage) <= DOWNTIME_THRESHOLD) downtime = true;
+            arrIdx++;
+          } else {
+            downtime = true;
+          }
+          if (downtime) totalDowntimeMin += REPORT_INTERVAL_SEC / 60;
+          timePtr = windowEnd;
+        }
+        updateSpeedBox(press, currentSpeed, lastCum, totalDowntimeMin, currentDownMin, isCurrentlyDown);
+      }));
+      updateCompanyFootageBar(pressTotals);
+      // Update chart lines for all presses
+      chartData.forEach((points, idx) => {
+        footageChart.data.datasets[idx].data = points;
       });
+      footageChart.update();
     }
 
-    // (G3) Speed Listeners (ignore speeds > 700)
-    function setupCurrentSpeedListener(pressPath, pressId){
-      firebase.database().ref(`${pressPath}/current_speed`).on('value', snapshot=>{
-        const data = snapshot.val();
-        if(!data || data.currentSpeed===undefined) return;
-        let spVal = Number(data.currentSpeed)||0;
-        // IGNORE if speed > 700
-        if(spVal>700) return;
-
-        updateCurrentSpeed(pressId, spVal);
-      });
+    function updateSpeedBox(press, speed, totalFootage, totalDowntimeMin, currentDownMin, isCurrentlyDown) {
+      const speedEl = document.getElementById('speed-value-' + press.id);
+      const tfTotalEl = document.getElementById('total-footage-' + press.id);
+      const pressNameEl = document.getElementById('press-name-' + press.id);
+      const speedIndicator = document.getElementById('speed-indicator-' + press.id);
+      const fillEl = document.getElementById('speed-fill-' + press.id);
+      const dtLabel = document.getElementById('total-downtime-' + press.id);
+      const warningEl = document.getElementById('down-warning-' + press.id);
+      animateNumber(speedEl, Math.round(speed), 7000); // speed animates in 7s
+      animateNumber(tfTotalEl, Math.round(totalFootage), 10000); // total per press animates in 10s
+      pressNameEl.style.color = press.color;
+      tfTotalEl.style.color = press.color;
+      speedIndicator.className = "speed-indicator";
+      fillEl.className = "fill";
+      let fillColorClass = "red";
+      if (speed === 0) { speedIndicator.classList.add("red"); fillColorClass = "red";
+      } else if (speed > 0 && speed < 150) { speedIndicator.classList.add("yellow"); fillColorClass = "yellow";
+      } else if (speed >= 150 && speed < 300) { speedIndicator.classList.add("green"); fillColorClass = "green";
+      } else if (speed >= 300) { speedIndicator.classList.add("bright-green"); fillColorClass = "bright-green";
+      }
+      fillEl.classList.add(fillColorClass);
+      const pct = Math.min(speed / 700 * 100, 100) + '%';
+      fillEl.style.width = pct;
+      speedEl.style.color = getComputedStyle(fillEl).backgroundColor;
+      // Format downtime:
+      let downtimeStr = "";
+      if (totalDowntimeMin < 60) {
+        downtimeStr = `${Math.round(totalDowntimeMin)} min`;
+      } else {
+        let hours = totalDowntimeMin / 60;
+        downtimeStr = `${hours % 1 === 0 ? hours : hours.toFixed(1)} hour${hours >= 2 ? "s" : ""}`;
+      }
+      dtLabel.innerHTML = `<span class="downtime-icon">⏱️</span> ${downtimeStr}`;
+      // Down for more than 30 consecutive minutes AND currently down?
+      const speedCard = document.getElementById('speed-widget-' + press.id);
+      if (isCurrentlyDown && currentDownMin >= 30) {
+        warningEl.innerHTML = `<span>Down ${currentDownMin} min</span>`;
+        warningEl.style.display = "flex";
+        speedCard.classList.add("danger");
+      } else {
+        warningEl.innerHTML = ``;
+        warningEl.style.display = "none";
+        speedCard.classList.remove("danger");
+      }
     }
 
-    // (G4) Helpers to update local state + net production
-    function updateFootage(pressId, footageVal){
-      pressFootages[pressId] = footageVal;
-      updateNetProduction();
-    }
-    function updateCurrentSpeed(pressId, speedVal){
-      setPressSpeed(pressId, speedVal);
+    function updateCompanyFootageBar(companyTotals) {
+      let total = companyTotals.reduce((a, b) => a + b, 0);
+      let percent = Math.min((total / COMPANY_GOAL) * 100, 999.9);
+
+      // For each press, calculate its portion of the bar
+      let etiPct = total ? companyTotals[0] / total * 100 : 0;
+      let nilpeterPct = total ? companyTotals[1] / total * 100 : 0;
+      let aztechPct = total ? companyTotals[2] / total * 100 : 0;
+      let aztech13Pct = total ? companyTotals[3] / total * 100 : 0;
+      let nilpeter13Pct = total ? companyTotals[4] / total * 100 : 0;
+      let slitterPct = total ? companyTotals[5] / total * 100 : 0;
+
+      let goalFillEti = document.getElementById('goal-fill-eti');
+      let goalFillNilpeter = document.getElementById('goal-fill-nilpeter');
+      let goalFillAztech = document.getElementById('goal-fill-aztech');
+      let goalFillAztech13 = document.getElementById('goal-fill-aztech13');
+      let goalFillSlitter = document.getElementById('goal-fill-slitter');
+      let goalPercentLabel = document.getElementById('goal-percent-label');
+      let companyFootageValEl = document.getElementById('company-footage-val');
+      let companyFootageMsg = document.getElementById('company-footage-message');
+      let companyGoalBar = document.getElementById('company-goal-bar');
+      let companyFootageMain = document.getElementById('company-footage-main');
+
+      // Set each bar's left and width for stacking
+      goalFillEti.style.left = "0%";
+      goalFillEti.style.width = (percent * (etiPct/100)) + "%";
+      goalFillNilpeter.style.left = (percent * (etiPct/100)) + "%";
+      goalFillNilpeter.style.width = (percent * (nilpeterPct/100)) + "%";
+      goalFillAztech.style.left = (percent * ((etiPct + nilpeterPct)/100)) + "%";
+      goalFillAztech.style.width = (percent * (aztechPct/100)) + "%";
+      goalFillAztech13.style.left = (percent * ((etiPct + nilpeterPct + aztechPct)/100)) + "%";
+      goalFillAztech13.style.width = (percent * (aztech13Pct/100)) + "%";
+      goalFillSlitter.style.left = (percent * ((etiPct + nilpeterPct + aztechPct + aztech13Pct)/100)) + "%";
+      goalFillSlitter.style.width = (percent * (slitterPct/100)) + "%";
+
+      goalPercentLabel.textContent = percent.toFixed(0) + "%";
+      animateNumber(companyFootageValEl, Math.round(total), 10000); // company total animates in 10s
+
+      // Remove casino/goal classes first
+      companyFootageValEl.classList.remove("goal-hit", "goal-over");
+      companyGoalBar.classList.remove("goal-hit", "goal-over");
+      companyFootageMain.classList.remove("goal-hit", "goal-over");
+      companyFootageMsg.innerHTML = '';
+
+      if (total >= COMPANY_GOAL && total < COMPANY_GOAL * 1.10) {
+        companyGoalBar.classList.add("goal-hit");
+        companyFootageValEl.classList.add("goal-hit");
+        companyFootageMain.classList.add("goal-hit");
+        companyFootageMsg.innerHTML = `<span class="goal-hit">Goal Hit! 🚀</span>`;
+      } else if (total >= COMPANY_GOAL * 1.10) {
+        companyGoalBar.classList.add("goal-over");
+        companyFootageValEl.classList.add("goal-over");
+        companyFootageMain.classList.add("goal-over");
+        companyFootageMsg.innerHTML = `<span class="goal-over">Over Goal! 🎉</span>`;
+      } else {
+        companyFootageMsg.innerHTML = `<span style="color:#bbb;font-weight:500;font-size:1rem;">Goal: ${COMPANY_GOAL.toLocaleString()} ft</span>`;
+      }
     }
 
-    // ----------------------------------------------------------------------------
-    // (H) INITIALIZE THE 6 PRESSES
-    // ----------------------------------------------------------------------------
-    setupDailyFootageListener('TEST_PRESS_001', 0, 'nilpeter');
-    setupCurrentSpeedListener('TEST_PRESS_001', 'nilpeter');
-    setupDailyFootageListener('TEST_PRESS_002', 1, 'aztech');
-    setupCurrentSpeedListener('TEST_PRESS_002', 'aztech');
-    setupDailyFootageListener('TEST_PRESS_003', 2, 'nilpeter13');
-    setupCurrentSpeedListener('TEST_PRESS_003', 'nilpeter13');
-    setupDailyFootageListener('TEST_PRESS_004', 3, 'eti');
-    setupCurrentSpeedListener('TEST_PRESS_004', 'eti');
-    setupDailyFootageListener('TEST_PRESS_005', 4, 'slitter');
-    setupCurrentSpeedListener('TEST_PRESS_005', 'slitter');
-    setupDailyFootageListener('TEST_PRESS_006', 5, 'aztech13');
-    setupCurrentSpeedListener('TEST_PRESS_006', 'aztech13');
-
-    // Weekly aggregator from two_hour_footage
-    setupWeeklyFootageListener('TEST_PRESS_001', 'nilpeter');
-    setupWeeklyFootageListener('TEST_PRESS_002', 'aztech');
-    setupWeeklyFootageListener('TEST_PRESS_003', 'nilpeter13');
-    setupWeeklyFootageListener('TEST_PRESS_004', 'eti');
-    setupWeeklyFootageListener('TEST_PRESS_005', 'slitter');
-    setupWeeklyFootageListener('TEST_PRESS_006', 'aztech13');
+    setupFootageChart();
+    fetchAllData();
+    setInterval(fetchAllData, 10000);
   </script>
+</body>
+</html>
+
 </body>
 </html>
 
