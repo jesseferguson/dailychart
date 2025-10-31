@@ -237,347 +237,401 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-  <script>
-    // ======= CONFIG =======
-    const COMPANY_GOAL = 300000;
-    const REPORT_INTERVAL_SEC = 10;          // server reporting cadence
-    const DOWNTIME_THRESHOLD = 0.01;
-    const REQUEST_TIMEOUT_MS = 6000;
-    const MAX_POINTS_INITIAL = 4000;         // safety cap on first load
-    const MAX_POINTS_INCREMENTAL = 300;      // cap per poll after first load
-    const POLL_MS = 10000;
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+<script>
+  // ======= CONFIG =======
+  const COMPANY_GOAL = 300000;
+  const REPORT_INTERVAL_SEC = 10;          // server reporting cadence
+  const DOWNTIME_THRESHOLD = 0.01;
+  const REQUEST_TIMEOUT_MS = 6000;
+  const MAX_POINTS_INITIAL = 4000;         // safety cap on first load
+  const MAX_POINTS_INCREMENTAL = 300;      // cap per poll after first load
+  const POLL_MS = 10000;                   // starting poll interval
 
-    // ======= SHIFT WINDOW (6:00 AM -> 2:30 AM next day) =======
-    function getShiftWindow() {
-      const now = new Date();
-      const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
-      const start = new Date(base); start.setHours(6,0,0,0);
-      const end = new Date(start); end.setDate(start.getDate()+1); end.setHours(2,30,0,0);
-      return { start, end, now };
-    }
+  // ======= SHIFT WINDOW (6:00 AM -> 2:30 AM next day) =======
+  function getShiftWindow() {
+    const now = new Date();
+    const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
+    const start = new Date(base); start.setHours(6,0,0,0);
+    const end = new Date(start); end.setDate(start.getDate()+1); end.setHours(2,30,0,0);
+    return { start, end, now };
+  }
 
-    // ======= DATA SOURCES =======
-    const PRESSES = [
-      { name: 'ETI', id: 'ETI', color: css('--eti'),
-        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_CURRENT_SPEED.json',
-        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_DAILY_SPEED.json' },
-      { name: '17\" Nilpeter', id: '17', color: css('--nilpeter'),
-        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/17Nilpeter_CURRENT_SPEED.json',
-        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/17Nilpeter_DAILY_SPEED.json' },
-      { name: '18\" Aztech', id: '18', color: css('--aztech'),
-        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/18Aztech_CURRENT_SPEED.json',
-        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/18Aztech_DAILY_SPEED.json' },
-      { name: '13AZTECH', id: '13AZTECH', color: css('--aztech13'),
-        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13AZTECH_CURRENT_SPEED.json',
-        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13AZTECH_DAILY_SPEED.json' },
-      { name: '13NILPETER', id: '13NILPETER', color: css('--nilpeter13'),
-        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13NILPETER_CURRENT_SPEED.json',
-        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13NILPETER_DAILY_SPEED.json' },
-      { name: 'SLITTER', id: 'SLITTER', color: css('--slitter'),
-        SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/SLITTER_CURRENT_SPEED.json',
-        FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/SLITTER_DAILY_SPEED.json' },
-    ];
+  // ======= DATA SOURCES =======
+  function css(varName){ return getComputedStyle(document.documentElement).getPropertyValue(varName).trim(); }
+  const PRESSES = [
+    { name: 'ETI', id: 'ETI', color: css('--eti'),
+      SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_CURRENT_SPEED.json',
+      FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_DAILY_SPEED.json' },
+    { name: '17\" Nilpeter', id: '17', color: css('--nilpeter'),
+      SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/17Nilpeter_CURRENT_SPEED.json',
+      FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/17Nilpeter_DAILY_SPEED.json' },
+    { name: '18\" Aztech', id: '18', color: css('--aztech'),
+      SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/18Aztech_CURRENT_SPEED.json',
+      FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/18Aztech_DAILY_SPEED.json' },
+    { name: '13AZTECH', id: '13AZTECH', color: css('--aztech13'),
+      SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13AZTECH_CURRENT_SPEED.json',
+      FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13AZTECH_DAILY_SPEED.json' },
+    { name: '13NILPETER', id: '13NILPETER', color: css('--nilpeter13'),
+      SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13NILPETER_CURRENT_SPEED.json',
+      FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13NILPETER_DAILY_SPEED.json' },
+    { name: 'SLITTER', id: 'SLITTER', color: css('--slitter'),
+      SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/SLITTER_CURRENT_SPEED.json',
+      FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/SLITTER_DAILY_SPEED.json' },
+  ];
 
-    function css(varName){ return getComputedStyle(document.documentElement).getPropertyValue(varName).trim(); }
+  // ======= STATE (per press) for incremental fetches =======
+  const pressState = {}; // id -> { lastTs:number|null, cum:number, points:Array<{x,y}> }
+  PRESSES.forEach(p => pressState[p.id] = { lastTs: null, cum: 0, points: [] });
 
-    // ======= STATE (per press) for incremental fetches =======
-    const pressState = {}; // id -> { lastTs:number|null, cum:number, points:Array<{x,y}> }
-    PRESSES.forEach(p => pressState[p.id] = { lastTs: null, cum: 0, points: [] });
+  // ======= FETCH HELPERS =======
+  function buildFootageURL(baseUrl, startSec, endSec, limitToLast) {
+    const params = new URLSearchParams({
+      orderBy: '"timestamp"',
+      startAt: String(startSec),
+      endAt: String(endSec),
+      limitToLast: String(limitToLast)
+    });
+    return `${baseUrl}?${params.toString()}`;
+  }
 
-    // ======= FETCH HELPERS =======
-    function buildFootageURL(baseUrl, startSec, endSec, limitToLast) {
-      const params = new URLSearchParams({
-        orderBy: '"timestamp"',
-        startAt: String(startSec),
-        endAt: String(endSec),
-        limitToLast: String(limitToLast)
-      });
-      return `${baseUrl}?${params.toString()}`;
-    }
+  // ---- ETag cache for conditional GETs (huge savings when unchanged) ----
+  const etags = new Map(); // key: full URL (including query), value: ETag string
 
-    async function fetchJSON(url, timeoutMs = REQUEST_TIMEOUT_MS) {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), timeoutMs);
-      try {
-        const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return await res.json();
-      } finally { clearTimeout(t); }
-    }
+  async function fetchJSON_ETag(url, timeoutMs = REQUEST_TIMEOUT_MS) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
-    // ======= DATA CLEANUP =======
-    function cleanEntries(raw, dStartMs, dEndMs) {
-      return Object.values(raw || {})
-        .map(v => (v && v.timestamp!=null && v.footage!=null) ? { ts: Number(v.timestamp)*1000, footage: Number(v.footage) } : null)
-        .filter(e => e && e.ts >= dStartMs && e.ts < dEndMs)
-        .sort((a,b) => a.ts - b.ts);
-    }
+    const headers = { 'X-Firebase-ETag': 'true' };
+    const prev = etags.get(url);
+    if (prev) headers['If-None-Match'] = prev;
 
-    // ======= CHART =======
-    let footageChart;
-    function setupFootageChart() {
-      const ctx = document.getElementById('footageChart').getContext('2d');
-      footageChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          datasets: PRESSES.map(press => ({
-            label: press.name,
-            data: [],
-            fill: false,
-            borderWidth: 2,
-            tension: 0.3,
-            borderColor: press.color,
-            pointRadius: 0,
-            pointHoverRadius: 0,
-            pointBackgroundColor: press.color
-          }))
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: true } },
-          scales: {
-            x: {
-              type: 'time',
-              time: { unit: 'hour', displayFormats: { hour: 'ha' } },
-              ticks: { color: css('--text') },
-              grid: { color: 'rgba(255,255,255,0.1)' }
-            },
-            y: {
-              ticks: { color: css('--text'), font: { size: 16 } },
-              grid: { color: 'rgba(255,255,255,0.1)' }
-            }
+    try {
+      const res = await fetch(url, { headers, signal: ctrl.signal, cache: 'no-store' });
+
+      if (res.status === 304) {
+        // unchanged → near-zero billed bytes + we skip work
+        return { unchanged: true, data: null };
+      }
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const etag = res.headers.get('ETag');
+      if (etag) etags.set(url, etag);
+
+      const data = await res.json();
+      return { unchanged: false, data };
+    } finally { clearTimeout(t); }
+  }
+
+  // ======= DATA CLEANUP =======
+  function cleanEntries(raw, dStartMs, dEndMs) {
+    return Object.values(raw || {})
+      .map(v => (v && v.timestamp!=null && v.footage!=null) ? { ts: Number(v.timestamp)*1000, footage: Number(v.footage) } : null)
+      .filter(e => e && e.ts >= dStartMs && e.ts < dEndMs)
+      .sort((a,b) => a.ts - b.ts);
+  }
+
+  // ======= CHART =======
+  let footageChart;
+  function setupFootageChart() {
+    const ctx = document.getElementById('footageChart').getContext('2d');
+    footageChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: PRESSES.map(press => ({
+          label: press.name,
+          data: [],
+          fill: false,
+          borderWidth: 2,
+          tension: 0.3,
+          borderColor: press.color,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          pointBackgroundColor: press.color
+        }))
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: true } },
+        scales: {
+          x: {
+            type: 'time',
+            time: { unit: 'hour', displayFormats: { hour: 'ha' } },
+            ticks: { color: css('--text') },
+            grid: { color: 'rgba(255,255,255,0.1)' }
           },
-          animation: { duration: 220, easing: 'easeOutQuart' }
-        }
-      });
+          y: {
+            ticks: { color: css('--text'), font: { size: 16 } },
+            grid: { color: 'rgba(255,255,255,0.1)' }
+          }
+        },
+        animation: { duration: 220, easing: 'easeOutQuart' }
+      }
+    });
+  }
+
+  // ======= UI ANIMS =======
+  function animateNumber(el, to, duration=7000) {
+    const from = Number((el.textContent || "0").replace(/,/g,"")) || 0;
+    if (Math.abs(to - from) < 1) { el.textContent = to.toLocaleString(); return; }
+    const start = performance.now();
+    function step(now) {
+      const t = Math.min((now - start) / duration, 1);
+      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+      const val = Math.round(from + (to - from) * eased);
+      el.textContent = val.toLocaleString();
+      if (t < 1) requestAnimationFrame(step);
+      else el.textContent = Math.round(to).toLocaleString();
+    }
+    requestAnimationFrame(step);
+  }
+
+  // ======= RENDER HELPERS =======
+  function byId(id){ return document.getElementById(id); }
+  function getDisplayedNumber(el){ return Number(String(el?.textContent||'0').replace(/,/g,''))||0; }
+
+  function updateSpeedCard(press, speed, totalFootage, totalDowntimeMin, currentDownMin, isDown) {
+    const speedEl = byId('speed-value-' + press.id);
+    const tfEl = byId('total-footage-' + press.id);
+    const nameEl = byId('press-name-' + press.id);
+    const indEl = byId('speed-indicator-' + press.id);
+    const fillEl = byId('speed-fill-' + press.id);
+    const dtLabel = byId('total-downtime-' + press.id);
+    const warnEl = byId('down-warning-' + press.id);
+    const card = byId('speed-widget-' + press.id);
+
+    animateNumber(speedEl, Math.round(speed), 7000);
+    animateNumber(tfEl, Math.round(totalFootage), 10000);
+    nameEl.style.color = press.color; tfEl.style.color = press.color;
+
+    indEl.className = "speed-indicator";
+    fillEl.className = "fill";
+    let cls = "red";
+    if (speed === 0) cls = "red";
+    else if (speed < 150) cls = "yellow";
+    else if (speed < 300) cls = "green";
+    else cls = "bright-green";
+    indEl.classList.add(cls); fillEl.classList.add(cls);
+
+    const pct = Math.min(speed / 700 * 100, 100) + '%';
+    fillEl.style.width = pct;
+    speedEl.style.color = getComputedStyle(fillEl).backgroundColor;
+
+    dtLabel.innerHTML = `<span class="downtime-icon">⏱️</span> ${
+      totalDowntimeMin < 60
+        ? `${Math.round(totalDowntimeMin)} min`
+        : `${(totalDowntimeMin/60)%1===0 ? (totalDowntimeMin/60) : (totalDowntimeMin/60).toFixed(1)} hour${totalDowntimeMin>=120?"s":""}`
+    }`;
+
+    if (isDown && currentDownMin >= 30) {
+      warnEl.textContent = `Down ${currentDownMin} min`;
+      warnEl.style.display = 'flex';
+      card.classList.add('danger');
+    } else {
+      warnEl.textContent = '';
+      warnEl.style.display = 'none';
+      card.classList.remove('danger');
+    }
+  }
+
+  function updateCompanyBar(totals) {
+    const total = totals.reduce((a,b)=>a+b,0);
+    const percent = Math.min((total / COMPANY_GOAL) * 100, 999.9);
+
+    const shares = total ? totals.map(x => x/total*100) : totals.map(_=>0);
+    const ids = ['eti','nilpeter','aztech','aztech13','slitter'];
+    const fills = ids.map(id => byId('goal-fill-'+id));
+
+    // left positions for stacked bar
+    let leftPct = 0;
+    for (let i=0;i<fills.length;i++){
+      fills[i].style.left = (percent * (leftPct/100)) + '%';
+      fills[i].style.width = (percent * (shares[i]/100)) + '%';
+      leftPct += shares[i] || 0;
     }
 
-    // ======= UI ANIMS =======
-    function animateNumber(el, to, duration=7000) {
-      const from = Number((el.textContent || "0").replace(/,/g,"")) || 0;
-      if (Math.abs(to - from) < 1) { el.textContent = to.toLocaleString(); return; }
-      const start = performance.now();
-      function step(now) {
-        const t = Math.min((now - start) / duration, 1);
-        const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-        const val = Math.round(from + (to - from) * eased);
-        el.textContent = val.toLocaleString();
-        if (t < 1) requestAnimationFrame(step);
-        else el.textContent = Math.round(to).toLocaleString();
-      }
-      requestAnimationFrame(step);
+    byId('goal-percent-label').textContent = percent.toFixed(0)+'%';
+    animateNumber(byId('company-footage-val'), Math.round(total), 10000);
+
+    const msg = byId('company-footage-message');
+    const bar = byId('company-goal-bar');
+    const head = byId('company-footage-main');
+    const val = byId('company-footage-val');
+    [bar, head, val].forEach(el => { el.classList.remove('goal-hit','goal-over'); });
+    msg.innerHTML = '';
+
+    if (total >= COMPANY_GOAL * 1.10) {
+      [bar, head, val].forEach(el => el.classList.add('goal-over'));
+      msg.innerHTML = `<span class="goal-over">Over Goal! 🎉</span>`;
+    } else if (total >= COMPANY_GOAL) {
+      [bar, head, val].forEach(el => el.classList.add('goal-hit'));
+      msg.innerHTML = `<span class="goal-hit">Goal Hit! 🚀</span>`;
+    } else {
+      msg.innerHTML = `<span style="color:#bbb;font-weight:500;font-size:1rem;">Goal: ${COMPANY_GOAL.toLocaleString()} ft</span>`;
+    }
+  }
+
+  // ======= DOWNTIME COMPUTE =======
+  function computeDowntime(arr, startMs, endMs, nowMs) {
+    const intervalMs = REPORT_INTERVAL_SEC * 1000;
+    let totalDowntimeMin = 0;
+    let currentDownMin = 0;
+    let isDown = false;
+
+    // last non-zero footage timestamp
+    let lastUpTs = null;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      if (arr[i].footage > DOWNTIME_THRESHOLD) { lastUpTs = arr[i].ts; break; }
     }
 
-    // ======= RENDER HELPERS =======
-    function updateSpeedCard(press, speed, totalFootage, totalDowntimeMin, currentDownMin, isDown) {
-      const speedEl = byId('speed-value-' + press.id);
-      const tfEl = byId('total-footage-' + press.id);
-      const nameEl = byId('press-name-' + press.id);
-      const indEl = byId('speed-indicator-' + press.id);
-      const fillEl = byId('speed-fill-' + press.id);
-      const dtLabel = byId('total-downtime-' + press.id);
-      const warnEl = byId('down-warning-' + press.id);
-      const card = byId('speed-widget-' + press.id);
-
-      animateNumber(speedEl, Math.round(speed), 7000);
-      animateNumber(tfEl, Math.round(totalFootage), 10000);
-      nameEl.style.color = press.color; tfEl.style.color = press.color;
-
-      indEl.className = "speed-indicator";
-      fillEl.className = "fill";
-      let cls = "red";
-      if (speed === 0) cls = "red";
-      else if (speed < 150) cls = "yellow";
-      else if (speed < 300) cls = "green";
-      else cls = "bright-green";
-      indEl.classList.add(cls); fillEl.classList.add(cls);
-
-      const pct = Math.min(speed / 700 * 100, 100) + '%';
-      fillEl.style.width = pct;
-      speedEl.style.color = getComputedStyle(fillEl).backgroundColor;
-
-      // downtime text
-      dtLabel.innerHTML = `<span class="downtime-icon">⏱️</span> ${
-        totalDowntimeMin < 60
-          ? `${Math.round(totalDowntimeMin)} min`
-          : `${(totalDowntimeMin/60)%1===0 ? (totalDowntimeMin/60) : (totalDowntimeMin/60).toFixed(1)} hour${totalDowntimeMin>=120?"s":""}`
-      }`;
-
-      if (isDown && currentDownMin >= 30) {
-        warnEl.textContent = `Down ${currentDownMin} min`;
-        warnEl.style.display = 'flex';
-        card.classList.add('danger');
-      } else {
-        warnEl.textContent = '';
-        warnEl.style.display = 'none';
-        card.classList.remove('danger');
-      }
+    if (arr.length === 0 || arr[arr.length-1].footage <= DOWNTIME_THRESHOLD) {
+      isDown = true;
+      const downSince = lastUpTs ?? startMs;
+      currentDownMin = Math.round((Math.min(nowMs, endMs) - downSince) / 60000);
     }
 
-    function updateCompanyBar(totals) {
-      const total = totals.reduce((a,b)=>a+b,0);
-      const percent = Math.min((total / COMPANY_GOAL) * 100, 999.9);
-
-      const shares = total ? totals.map(x => x/total*100) : totals.map(_=>0);
-      const ids = ['eti','nilpeter','aztech','aztech13','slitter'];
-      const fills = ids.map(id => byId('goal-fill-'+id));
-
-      // left positions for stacked bar
-      let leftPct = 0;
-      for (let i=0;i<fills.length;i++){
-        fills[i].style.left = (percent * (leftPct/100)) + '%';
-        fills[i].style.width = (percent * (shares[i]/100)) + '%';
-        leftPct += shares[i] || 0;
+    let timePtr = startMs;
+    let idx = 0;
+    while (timePtr < nowMs && timePtr < endMs) {
+      const windowEnd = timePtr + intervalMs;
+      let rec = arr[idx];
+      let down = true; // assume down if no record in window
+      if (rec && rec.ts >= timePtr && rec.ts < windowEnd) {
+        down = !(rec.footage > DOWNTIME_THRESHOLD);
+        idx++;
       }
-
-      byId('goal-percent-label').textContent = percent.toFixed(0)+'%';
-      animateNumber(byId('company-footage-val'), Math.round(total), 10000);
-
-      // goal classes/messages
-      const msg = byId('company-footage-message');
-      const bar = byId('company-goal-bar');
-      const head = byId('company-footage-main');
-      const val = byId('company-footage-val');
-      [bar, head, val].forEach(el => { el.classList.remove('goal-hit','goal-over'); });
-      msg.innerHTML = '';
-
-      if (total >= COMPANY_GOAL * 1.10) {
-        [bar, head, val].forEach(el => el.classList.add('goal-over'));
-        msg.innerHTML = `<span class="goal-over">Over Goal! 🎉</span>`;
-      } else if (total >= COMPANY_GOAL) {
-        [bar, head, val].forEach(el => el.classList.add('goal-hit'));
-        msg.innerHTML = `<span class="goal-hit">Goal Hit! 🚀</span>`;
-      } else {
-        msg.innerHTML = `<span style="color:#bbb;font-weight:500;font-size:1rem;">Goal: ${COMPANY_GOAL.toLocaleString()} ft</span>`;
-      }
+      if (down) totalDowntimeMin += REPORT_INTERVAL_SEC / 60;
+      timePtr = windowEnd;
     }
 
-    function byId(id){ return document.getElementById(id); }
+    return { totalDowntimeMin, currentDownMin, isDown };
+  }
 
-    // ======= DOWNTIME COMPUTE =======
-    function computeDowntime(arr, startMs, endMs, nowMs) {
-      const intervalMs = REPORT_INTERVAL_SEC * 1000;
-      let totalDowntimeMin = 0;
-      let currentDownMin = 0;
-      let isDown = false;
+  // ======= MAIN FETCH LOOP (ETag + incremental) =======
+  async function refreshAll() {
+    let anyChange = false; // track if anything changed this cycle
 
-      // last non-zero footage timestamp
-      let lastUpTs = null;
-      for (let i = arr.length - 1; i >= 0; i--) {
-        if (arr[i].footage > DOWNTIME_THRESHOLD) { lastUpTs = arr[i].ts; break; }
-      }
+    const { start, end, now } = getShiftWindow();
+    const startSec = Math.floor(start.getTime()/1000);
+    const endSec = Math.floor(Math.min(now.getTime(), end.getTime())/1000);
 
-      if (arr.length === 0 || arr[arr.length-1].footage <= DOWNTIME_THRESHOLD) {
-        isDown = true;
-        const downSince = lastUpTs ?? startMs;
-        currentDownMin = Math.round((Math.min(nowMs, endMs) - downSince) / 60000);
-      }
+    const pressesResults = await Promise.all(PRESSES.map(async (press) => {
+      // incremental window
+      const lastTs = pressState[press.id].lastTs;
+      const incrementalStartSec = lastTs ? Math.floor(lastTs/1000) + 1 : startSec;
 
-      let timePtr = startMs;
-      let idx = 0;
-      while (timePtr < nowMs && timePtr < endMs) {
-        const windowEnd = timePtr + intervalMs;
-        let rec = arr[idx];
-        let down = true; // assume down if no record in window
-        if (rec && rec.ts >= timePtr && rec.ts < windowEnd) {
-          down = !(rec.footage > DOWNTIME_THRESHOLD);
-          idx++;
-        }
-        if (down) totalDowntimeMin += REPORT_INTERVAL_SEC / 60;
-        timePtr = windowEnd;
-      }
+      // cap downloads
+      const expectedPoints = Math.ceil((endSec - incrementalStartSec) / REPORT_INTERVAL_SEC) + 5;
+      const limitToLast = Math.min(
+        lastTs ? MAX_POINTS_INCREMENTAL : MAX_POINTS_INITIAL,
+        Math.max(0, expectedPoints)
+      );
 
-      return { totalDowntimeMin, currentDownMin, isDown };
-    }
+      const footageURL = buildFootageURL(press.FOOTAGE_URL, incrementalStartSec, endSec, limitToLast);
 
-    // ======= MAIN FETCH LOOP (initial + incremental) =======
-    async function refreshAll() {
-      const { start, end, now } = getShiftWindow();
-      const startSec = Math.floor(start.getTime()/1000);
-      const endSec = Math.floor(Math.min(now.getTime(), end.getTime())/1000);
+      // ETag-aware requests (huge savings when unchanged)
+      const [speedRes, footageRes] = await Promise.all([
+        fetchJSON_ETag(press.SPEED_URL).catch(() => ({ unchanged: true, data: null })),
+        fetchJSON_ETag(footageURL).catch(() => ({ unchanged: true, data: null }))
+      ]);
 
-      const pressesResults = await Promise.all(PRESSES.map(async (press) => {
-        // figure incremental window
-        const lastTs = pressState[press.id].lastTs;
-        const incrementalStartSec = lastTs ? Math.floor(lastTs/1000) + 1 : startSec;
-        // cap downloads
-        const expectedPoints = Math.ceil((endSec - incrementalStartSec) / REPORT_INTERVAL_SEC) + 5;
-        const limitToLast = Math.min(
-          lastTs ? MAX_POINTS_INCREMENTAL : MAX_POINTS_INITIAL,
-          Math.max(0, expectedPoints)
-        );
+      return { press, speedRes, footageRes, start, end, now };
+    }));
 
-        const footageURL = buildFootageURL(press.FOOTAGE_URL, incrementalStartSec, endSec, limitToLast);
+    const totals = [];
 
-        const [speedData, footageData] = await Promise.all([
-          fetchJSON(press.SPEED_URL).catch(()=>null),
-          fetchJSON(footageURL).catch(()=> ({}))
-        ]);
+    pressesResults.forEach(({ press, speedRes, footageRes, start, end, now }) => {
+      const state = pressState[press.id];
 
-        return { press, speedData, footageData, start, end, now };
-      }));
+      // Only process footage if changed; otherwise skip work and DOM writes
+      const cleaned = footageRes.unchanged
+        ? []
+        : cleanEntries(footageRes.data, start.getTime(), end.getTime());
 
-      // update state + UI
-      const totals = [];
-
-      pressesResults.forEach(({ press, speedData, footageData, start, end, now }) => {
-        const state = pressState[press.id];
-        const cleaned = cleanEntries(footageData, start.getTime(), end.getTime());
-
-        // If first load (no lastTs), rebuild cum + points from scratch slice
-        if (state.lastTs == null) {
-          state.cum = 0;
-          state.points = [];
-          cleaned.forEach(e => {
-            state.cum += e.footage;
-            state.points.push({ x: new Date(e.ts), y: state.cum });
-            state.lastTs = e.ts; // keep advancing as we go
-          });
-        } else {
-          // incremental: append only new entries
-          cleaned.forEach(e => {
-            state.cum += e.footage;
-            state.points.push({ x: new Date(e.ts), y: state.cum });
-            state.lastTs = e.ts;
-          });
-        }
-
-        // Keep chart memory bounded (optional)
+      if (!footageRes.unchanged && cleaned.length) {
+        anyChange = true;
+        if (state.lastTs == null) { state.cum = 0; state.points = []; }
+        cleaned.forEach(e => {
+          state.cum += e.footage;
+          state.points.push({ x: new Date(e.ts), y: state.cum });
+          state.lastTs = e.ts;
+        });
         if (state.points.length > MAX_POINTS_INITIAL) {
           state.points.splice(0, state.points.length - MAX_POINTS_INITIAL);
         }
-
-        // compute downtime using all points we have for the shift
-        const arrForDown = state.points.map(p => ({ ts: p.x.getTime(), footage: 1 })); // use presence of a point as "reported"
-        // Better: recompute from raw cleaned merged, but to avoid downloads,
-        // we approximate downtime with incremental slices:
-        const mergedArr = cleaned.length ? cleaned : []; // when empty, downtime calc will mark gaps as down
-        const { totalDowntimeMin, currentDownMin, isDown } =
-          computeDowntime(mergedArr, start.getTime(), end.getTime(), now.getTime());
-
-        const currentSpeed = Number(speedData?.currentSpeed || 0);
-        totals.push(state.cum);
-
-        // Push to chart dataset
         const dsIndex = PRESSES.findIndex(p => p.id === press.id);
         if (dsIndex !== -1) {
           footageChart.data.datasets[dsIndex].data = state.points;
         }
+      }
 
-        updateSpeedCard(press, currentSpeed, state.cum, totalDowntimeMin, currentDownMin, isDown);
-      });
+      // Speed (cheap; still ETag'd). If unchanged, keep displayed value.
+      let currentSpeed;
+      if (speedRes.unchanged) {
+        currentSpeed = getDisplayedNumber(byId('speed-value-' + press.id));
+      } else {
+        anyChange = true;
+        currentSpeed = Number(speedRes.data?.currentSpeed || 0);
+      }
 
-      // Update company aggregates + chart in one go
-      updateCompanyBar(totals);
-      footageChart.update();
+      // Downtime: recompute only when footage changed; otherwise skip heavy math
+      const { totalDowntimeMin, currentDownMin, isDown } =
+        cleaned.length
+          ? computeDowntime(cleaned, start.getTime(), end.getTime(), now.getTime())
+          : { totalDowntimeMin: 0, currentDownMin: 0, isDown: false };
+
+      totals.push(pressState[press.id].cum || 0);
+      updateSpeedCard(press, currentSpeed, pressState[press.id].cum || 0, totalDowntimeMin, currentDownMin, isDown);
+    });
+
+    updateCompanyBar(totals);
+    if (anyChange) footageChart.update();
+
+    return anyChange; // tells the adaptive poller whether to back off or speed up
+  }
+
+  // ======= ADAPTIVE POLLER (backs off when unchanged) =======
+  let pollTimer = null;
+  let currentInterval = POLL_MS;
+  let unchangedStreak = 0;
+  const MIN_POLL_MS = 5000;     // fastest we'll go
+  const MAX_POLL_MS = 60000;    // slowest we'll go (1 min)
+
+  function scheduleNext() {
+    if (pollTimer) clearTimeout(pollTimer);
+    pollTimer = setTimeout(async () => {
+      const changed = await refreshAll();
+      if (changed) {
+        unchangedStreak = 0;
+        currentInterval = Math.max(MIN_POLL_MS, Math.floor(currentInterval * 0.5)); // speed up on change
+      } else {
+        unchangedStreak++;
+        const factor = unchangedStreak < 3 ? 1.5 : 2.0; // gradually back off
+        currentInterval = Math.min(MAX_POLL_MS, Math.floor(currentInterval * factor));
+      }
+      scheduleNext();
+    }, currentInterval);
+  }
+
+  // Pause polling when the tab isn't visible (saves bytes & CPU)
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      if (pollTimer) clearTimeout(pollTimer);
+      pollTimer = null;
+    } else {
+      currentInterval = POLL_MS;
+      unchangedStreak = 0;
+      scheduleNext();
     }
+  });
 
-    // ======= BOOT =======
-    setupFootageChart();
-    refreshAll();
-    setInterval(refreshAll, POLL_MS);
-  </script>
+  // ======= BOOT =======
+  setupFootageChart();
+  currentInterval = POLL_MS;
+  scheduleNext();
+</script>
+
 </body>
 </html>
