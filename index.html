@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Production Dashboard (Optimized)</title>
+  <title>Production Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -21,29 +21,57 @@
       --danger: #E53935;
       --safe: #43A047;
     }
-    body { min-height: 100vh; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 0.7rem; }
-    .company-footage-bar { width: 98vw; max-width: 1200px; margin: 0 auto 1rem auto; background: #232f36; border-radius: 0.7rem; box-shadow: 0 1.5px 10px 0 rgba(0,188,212,0.10); padding: 0.7rem 1rem 0.85rem 1rem; display: flex; flex-direction: column; align-items: stretch; position: relative; z-index: 2; }
+    body {
+      min-height: 100vh;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0.7rem;
+    }
+    .company-footage-bar {
+      width: 98vw; max-width: 1200px; margin: 0 auto 1rem auto;
+      background: #232f36; border-radius: 0.7rem; box-shadow: 0 1.5px 10px 0 rgba(0,188,212,0.10);
+      padding: 0.7rem 1rem 0.85rem 1rem;
+      display: flex; flex-direction: column; align-items: stretch; position: relative; z-index: 2;
+    }
     .company-footage-main { display: flex; align-items: baseline; gap: 0.7rem; font-size: 1.33rem; font-weight: 800; color: var(--primary); margin-bottom: 0.15rem; flex-wrap: wrap;}
     .big-number { font-size: 2.1rem; font-weight: 900; color: var(--primary); min-width: 105px; text-align: right; }
     .company-goal-bar { width: 100%; background: #223239; border-radius: 0.45rem; height: 1.18rem; overflow: hidden; margin-top: 0.19rem; position: relative; display: flex; }
-    .goal-fill-nilpeter, .goal-fill-aztech, .goal-fill-eti, .goal-fill-aztech13, .goal-fill-slitter { height: 100%; position: absolute; top: 0; z-index: 1; transition: width 0.7s cubic-bezier(.4,2,.3,1);}    
+    .goal-fill-nilpeter, .goal-fill-aztech, .goal-fill-eti, .goal-fill-aztech13, .goal-fill-slitter { height: 100%; position: absolute; top: 0; z-index: 1; transition: width 0.7s cubic-bezier(.4,2,.3,1);}
     .goal-fill-nilpeter { background: var(--nilpeter); border-radius: 0.45rem 0 0 0.45rem; left: 0; }
     .goal-fill-aztech { background: var(--aztech); }
     .goal-fill-eti { background: var(--eti); }
-    .goal-fill-aztech13 { background: var(--aztech13);}    
-    .goal-fill-slitter { background: var(--slitter);}    
+    .goal-fill-aztech13 { background: var(--aztech13);}
+    .goal-fill-slitter { background: var(--slitter);}
     .goal-percent-label { position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%); color: #fff; font-weight: 700; font-size: 0.95rem; z-index: 2; text-shadow: 0 1px 6px #0008; }
     .dashboard-main-flex { width: 98vw; max-width: 1200px; display: flex; gap: 1.2rem; align-items: flex-start; justify-content: center; flex-wrap: wrap;}
     .chart-panel { flex: 3 1 350px; max-width: 100%; min-width: 280px;}
     .chart-card { background: var(--card-bg); border-radius: 1.2rem; padding: 1rem 1.2rem; margin-bottom: 0.2rem; }
     #footageChart { width: 100% !important; height: 500px !important; }
     .speed-cards-container { display: flex; flex-direction: column; gap: 1.2rem; min-width: 220px; max-width: 400px; width: 100%; }
-    .card.speed-card { flex: 1 1 0; min-width: 170px; width: 100%; text-align: center; position: relative; padding: 0.65rem 0.7rem 0.4rem 0.7rem; background: var(--card-bg); border-radius: 1rem; box-shadow: 0 4px 30px rgba(0,0,0,0.19); margin-bottom: 0.08rem; transition: box-shadow 0.6s, border 0.6s; box-sizing: border-box; }
-    .speed-card.danger { box-shadow: 0 0 24px 4px var(--danger), 0 1.5px 10px 0 rgba(0,0,0,0.17); border: 2.8px solid var(--danger); animation: card-glow 1.25s alternate infinite; }
-    @keyframes card-glow { 0%{ box-shadow: 0 0 24px 4px var(--danger), 0 1.5px 10px 0 rgba(0,0,0,0.12);} 100%{ box-shadow: 0 0 48px 9px var(--danger), 0 1.5px 20px 0 rgba(0,0,0,0.14);} }
+    .card.speed-card {
+      flex: 1 1 0;
+      min-width: 170px; width: 100%; text-align: center; position: relative;
+      padding: 0.65rem 0.7rem 0.4rem 0.7rem;
+      background: var(--card-bg); border-radius: 1rem; box-shadow: 0 4px 30px rgba(0,0,0,0.19);
+      margin-bottom: 0.08rem; transition: box-shadow 0.6s, border 0.6s;
+      box-sizing: border-box;
+    }
+    .speed-card.danger {
+      box-shadow: 0 0 24px 4px var(--danger), 0 1.5px 10px 0 rgba(0,0,0,0.17);
+      border: 2.8px solid var(--danger);
+      animation: card-glow 1.25s alternate infinite;
+    }
+    @keyframes card-glow {
+      0%   { box-shadow: 0 0 24px 4px var(--danger), 0 1.5px 10px 0 rgba(0,0,0,0.12);}
+      100% { box-shadow: 0 0 48px 9px var(--danger), 0 1.5px 20px 0 rgba(0,0,0,0.14);}
+    }
     .press-header-row { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; font-size: 1.1rem; margin-bottom: 0.18rem;}
     .press-name-strong { font-weight: 800; font-size: 1rem; }
-    .total-footage-strong { font-size: 1.23rem; font-weight: 900; color: var(--primary);}    
+    .total-footage-strong { font-size: 1.23rem; font-weight: 900; color: var(--primary);}
     .speed-row { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.1rem; flex-direction: row-reverse; }
     .speed-indicator { width: 14px; height: 14px; border-radius: 50%; border: 1.2px solid #202628; display: inline-block; transition: background 1.2s, box-shadow 1.2s;}
     .speed-indicator.red { background: #E53935; animation: speedpulse-red 2.2s cubic-bezier(.5,0,.5,1) infinite alternate;}
@@ -63,11 +91,36 @@
     .fill.bright-green { background: #32fc6c !important; }
     .downtime-total-label { display: flex; align-items: center; justify-content: center; gap: 0.32em; font-size: 1rem; color: var(--subtext); font-weight: 700; margin-top: 0.18rem; }
     .downtime-icon { display: inline-block; vertical-align: middle; font-size: 1.3em; color: #FDD835; margin-right: 0.12em; filter: drop-shadow(0 1px 1.2px #0007); }
-    .down-warning { color: var(--danger); font-weight: 800; font-size: 1.04rem; margin: 0.25rem 0 0.09rem 0; letter-spacing: 0.02em; text-shadow: 0 2px 8px #e5393523; animation: card-glow 1.05s alternate infinite; display: flex; align-items: center; justify-content: center; gap: 0.2em; }
-    @media (max-width: 1000px) { .dashboard-main-flex { flex-direction: column; gap: 1.2rem; } .chart-panel, .speed-cards-container { max-width: 100vw; } }
-    @media (max-width: 650px) { .company-footage-bar, .speed-cards-container { max-width: 100vw; min-width: unset; } .speed-card { min-width: 98vw; max-width: 100vw;} .company-footage-main { font-size: 1rem; flex-direction: column;} .big-number { font-size: 1.45rem; min-width: 70px;} #footageChart { height: 220px !important; } .chart-card { padding: 0.3rem 0.2rem; } .speed-row { flex-direction: column-reverse; gap: 0.2rem; } .progress-bar { margin: 0; width: 100%; min-width: unset; } .speed-value { text-align: center; } }
-    .goal-hit, .goal-over { background: var(--card-bg); color: #ffd700 !important; box-shadow: 0 0 16px 4px #ffd70080, 0 0 0px 0px #fff8dc00; border-radius: 0.7rem; transition: box-shadow 0.8s; }
-    .goal-hit .goal-percent-label, .goal-over .goal-percent-label { color: #ffd700 !important; text-shadow: 0 0 6px #ffd70077, 0 0 12px #fff8dc33; }
+    .down-warning {
+      color: var(--danger); font-weight: 800; font-size: 1.04rem; margin: 0.25rem 0 0.09rem 0;
+      letter-spacing: 0.02em; text-shadow: 0 2px 8px #e5393523; animation: card-glow 1.05s alternate infinite;
+      display: flex; align-items: center; justify-content: center; gap: 0.2em;
+    }
+    @media (max-width: 1000px) {
+      .dashboard-main-flex { flex-direction: column; gap: 1.2rem; }
+      .chart-panel, .speed-cards-container { max-width: 100vw; }
+    }
+    @media (max-width: 650px) {
+      .company-footage-bar, .speed-cards-container { max-width: 100vw; min-width: unset; }
+      .speed-card { min-width: 98vw; max-width: 100vw;}
+      .company-footage-main { font-size: 1rem; flex-direction: column;}
+      .big-number { font-size: 1.45rem; min-width: 70px;}
+      #footageChart { height: 220px !important; }
+      .chart-card { padding: 0.3rem 0.2rem; }
+      .speed-row { flex-direction: column-reverse; gap: 0.2rem; }
+      .progress-bar { margin: 0; width: 100%; min-width: unset; }
+      .speed-value { text-align: center; }
+    }
+    .goal-hit, .goal-over {
+      background: var(--card-bg); color: #ffd700 !important;
+      box-shadow: 0 0 16px 4px #ffd70080, 0 0 0px 0px #fff8dc00; border-radius: 0.7rem; transition: box-shadow 0.8s;
+    }
+    .goal-hit .goal-percent-label, .goal-over .goal-percent-label {
+      color: #ffd700 !important; text-shadow: 0 0 6px #ffd70077, 0 0 12px #fff8dc33;
+    }
+    #company-footage-message .goal-hit, #company-footage-message .goal-over {
+      font-weight: 800; color: #ffd700; text-shadow: 0 0 10px #ffd70044, 0 0 16px #fff8dc44;
+    }
   </style>
 </head>
 <body>
@@ -89,7 +142,8 @@
 
   <div class="dashboard-main-flex">
     <div class="speed-cards-container">
-      <div class="card speed-card" id="speed-widget-ETI" style="cursor:pointer;" onclick="window.location.href='eti.html'">
+      <!-- ETI -->
+      <div class="card speed-card" id="speed-widget-ETI" onclick="window.location.href='press_eti.html'">
         <div class="press-header-row">
           <span id="speed-indicator-ETI" class="speed-indicator"></span>
           <span class="press-name-strong" id="press-name-ETI">ETI</span>
@@ -102,6 +156,7 @@
         <span id="total-downtime-ETI" class="downtime-total-label"></span>
         <div id="down-warning-ETI" class="down-warning" style="display:none;"></div>
       </div>
+      <!-- 17" Nilpeter -->
       <div class="card speed-card" id="speed-widget-17">
         <div class="press-header-row">
           <span id="speed-indicator-17" class="speed-indicator"></span>
@@ -115,6 +170,7 @@
         <span id="total-downtime-17" class="downtime-total-label"></span>
         <div id="down-warning-17" class="down-warning" style="display:none;"></div>
       </div>
+      <!-- 18" Aztech -->
       <div class="card speed-card" id="speed-widget-18">
         <div class="press-header-row">
           <span id="speed-indicator-18" class="speed-indicator"></span>
@@ -128,6 +184,7 @@
         <span id="total-downtime-18" class="downtime-total-label"></span>
         <div id="down-warning-18" class="down-warning" style="display:none;"></div>
       </div>
+      <!-- 13AZTECH -->
       <div class="card speed-card" id="speed-widget-13AZTECH">
         <div class="press-header-row">
           <span id="speed-indicator-13AZTECH" class="speed-indicator"></span>
@@ -141,6 +198,7 @@
         <span id="total-downtime-13AZTECH" class="downtime-total-label"></span>
         <div id="down-warning-13AZTECH" class="down-warning" style="display:none;"></div>
       </div>
+      <!-- 13NILPETER -->
       <div class="card speed-card" id="speed-widget-13NILPETER">
         <div class="press-header-row">
           <span id="speed-indicator-13NILPETER" class="speed-indicator"></span>
@@ -154,6 +212,7 @@
         <span id="total-downtime-13NILPETER" class="downtime-total-label"></span>
         <div id="down-warning-13NILPETER" class="down-warning" style="display:none;"></div>
       </div>
+      <!-- SLITTER -->
       <div class="card speed-card" id="speed-widget-SLITTER">
         <div class="press-header-row">
           <span id="speed-indicator-SLITTER" class="speed-indicator"></span>
@@ -180,108 +239,82 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <script>
-    // ---- Time window helper: 6:00 AM -> 2:30 AM next day (shift window) ----
-    function getDowntimeWindow() {
+    // ======= CONFIG =======
+    const COMPANY_GOAL = 300000;
+    const REPORT_INTERVAL_SEC = 10;          // server reporting cadence
+    const DOWNTIME_THRESHOLD = 0.01;
+    const REQUEST_TIMEOUT_MS = 6000;
+    const MAX_POINTS_INITIAL = 4000;         // safety cap on first load
+    const MAX_POINTS_INCREMENTAL = 300;      // cap per poll after first load
+    const POLL_MS = 10000;
+
+    // ======= SHIFT WINDOW (6:00 AM -> 2:30 AM next day) =======
+    function getShiftWindow() {
       const now = new Date();
-      let base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      let start = new Date(base.getTime()); start.setHours(6, 0, 0, 0); // 6:00 AM local
-      let end = new Date(start.getTime()); end.setDate(start.getDate() + 1); end.setHours(2, 30, 0, 0); // 2:30 AM next day
-      return {start, end};
+      const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
+      const start = new Date(base); start.setHours(6,0,0,0);
+      const end = new Date(start); end.setDate(start.getDate()+1); end.setHours(2,30,0,0);
+      return { start, end, now };
     }
 
-    // ---- Press definitions ----
+    // ======= DATA SOURCES =======
     const PRESSES = [
-      { name: 'ETI', id: 'ETI', color: getCS('--eti'),
+      { name: 'ETI', id: 'ETI', color: css('--eti'),
         SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_CURRENT_SPEED.json',
         FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_DAILY_SPEED.json' },
-      { name: '17" Nilpeter', id: '17', color: getCS('--nilpeter'),
+      { name: '17\" Nilpeter', id: '17', color: css('--nilpeter'),
         SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/17Nilpeter_CURRENT_SPEED.json',
         FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/17Nilpeter_DAILY_SPEED.json' },
-      { name: '18" Aztech', id: '18', color: getCS('--aztech'),
+      { name: '18\" Aztech', id: '18', color: css('--aztech'),
         SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/18Aztech_CURRENT_SPEED.json',
         FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/18Aztech_DAILY_SPEED.json' },
-      { name: '13AZTECH', id: '13AZTECH', color: getCS('--aztech13'),
+      { name: '13AZTECH', id: '13AZTECH', color: css('--aztech13'),
         SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13AZTECH_CURRENT_SPEED.json',
         FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13AZTECH_DAILY_SPEED.json' },
-      { name: '13NILPETER', id: '13NILPETER', color: getCS('--nilpeter13'),
+      { name: '13NILPETER', id: '13NILPETER', color: css('--nilpeter13'),
         SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13NILPETER_CURRENT_SPEED.json',
         FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13NILPETER_DAILY_SPEED.json' },
-      { name: 'SLITTER', id: 'SLITTER', color: getCS('--slitter'),
+      { name: 'SLITTER', id: 'SLITTER', color: css('--slitter'),
         SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/SLITTER_CURRENT_SPEED.json',
         FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/SLITTER_DAILY_SPEED.json' },
     ];
 
-    function getCS(varName){ return getComputedStyle(document.documentElement).getPropertyValue(varName).trim(); }
+    function css(varName){ return getComputedStyle(document.documentElement).getPropertyValue(varName).trim(); }
 
-    const COMPANY_GOAL = 300000;
-    const REPORT_INTERVAL_SEC = 10;
-    const DOWNTIME_THRESHOLD = 0.01;
+    // ======= STATE (per press) for incremental fetches =======
+    const pressState = {}; // id -> { lastTs:number|null, cum:number, points:Array<{x,y}> }
+    PRESSES.forEach(p => pressState[p.id] = { lastTs: null, cum: 0, points: [] });
 
-    // ---- Bandwidth optimizations ----
-    // 1) Build a query limited to the time window + row cap
-    function footageQueryURL(baseUrl, startMs, endMs, approxLimit=1500) {
-      const start = Math.floor(startMs / 1000);
-      const end   = Math.floor(endMs / 1000);
+    // ======= FETCH HELPERS =======
+    function buildFootageURL(baseUrl, startSec, endSec, limitToLast) {
       const params = new URLSearchParams({
         orderBy: '"timestamp"',
-        startAt: String(start),
-        endAt: String(end),
-        limitToLast: String(approxLimit)
+        startAt: String(startSec),
+        endAt: String(endSec),
+        limitToLast: String(limitToLast)
       });
       return `${baseUrl}?${params.toString()}`;
     }
 
-    // 2) ETag cache helpers (304 Not Modified => no JSON body)
-    const ETAGS = new Map();   // key -> etag
-    const CACHE = new Map();   // key -> last JSON
-
-    function makeEtagOpts(key) {
-      const headers = new Headers();
-      headers.set('X-Firebase-ETag', 'true');
-      const etag = ETAGS.get(key);
-      if (etag) headers.set('If-None-Match', etag);
-      return { headers, cache: 'no-store' };
+    async function fetchJSON(url, timeoutMs = REQUEST_TIMEOUT_MS) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+      } finally { clearTimeout(t); }
     }
 
-    async function etagJSON(response, key) {
-      if (response.status === 304) {
-        return CACHE.get(key) ?? null;
-      }
-      if (!response.ok) return null;
-      const etag = response.headers.get('ETag');
-      if (etag) ETAGS.set(key, etag);
-      const data = await response.json();
-      CACHE.set(key, data);
-      return data;
-    }
-
-    // ---- Smooth number animation ----
-    function animateNumber(el, to, duration=7000) {
-      let from = Number((el.textContent || "0").replace(/,/g,"")) || 0;
-      if (Math.abs(to - from) < 1) { el.textContent = to.toLocaleString(); return; }
-      let start = performance.now();
-      function step(now) {
-        let t = Math.min((now - start) / duration, 1);
-        let eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-        let val = Math.round(from + (to - from) * eased);
-        el.textContent = val.toLocaleString();
-        if (t < 1) requestAnimationFrame(step); else el.textContent = Math.round(to).toLocaleString();
-      }
-      requestAnimationFrame(step);
-    }
-
-    function cleanEntries(raw, dStart, dEnd) {
+    // ======= DATA CLEANUP =======
+    function cleanEntries(raw, dStartMs, dEndMs) {
       return Object.values(raw || {})
-        .map(v => {
-          if (v.timestamp == null || v.footage == null) return null;
-          let ts = Number(v.timestamp) * 1000;
-          if (isNaN(ts)) return null;
-          return { ts, footage: v.footage };
-        })
-        .filter(e => e && e.ts >= dStart.getTime() && e.ts < dEnd.getTime())
-        .sort((a, b) => a.ts - b.ts);
+        .map(v => (v && v.timestamp!=null && v.footage!=null) ? { ts: Number(v.timestamp)*1000, footage: Number(v.footage) } : null)
+        .filter(e => e && e.ts >= dStartMs && e.ts < dEndMs)
+        .sort((a,b) => a.ts - b.ts);
     }
 
+    // ======= CHART =======
     let footageChart;
     function setupFootageChart() {
       const ctx = document.getElementById('footageChart').getContext('2d');
@@ -308,11 +341,11 @@
             x: {
               type: 'time',
               time: { unit: 'hour', displayFormats: { hour: 'ha' } },
-              ticks: { color: getCS('--text') },
+              ticks: { color: css('--text') },
               grid: { color: 'rgba(255,255,255,0.1)' }
             },
             y: {
-              ticks: { color: getCS('--text'), font: { size: 16 } },
+              ticks: { color: css('--text'), font: { size: 16 } },
               grid: { color: 'rgba(255,255,255,0.1)' }
             }
           },
@@ -321,193 +354,230 @@
       });
     }
 
-    // Avoid overlapping polls
-    let inFlight = null;
-
-    async function fetchAllData() {
-      if (inFlight) { try { inFlight.abort(); } catch(e){} }
-      const ac = new AbortController();
-      inFlight = ac;
-
-      const {start: downtimeStart, end: downtimeEnd} = getDowntimeWindow();
-
-      const requests = PRESSES.map(press => {
-        const speedKey = press.id + ':speed';
-        const footKey  = press.id + ':footage';
-        const footURL  = footageQueryURL(press.FOOTAGE_URL, downtimeStart.getTime(), downtimeEnd.getTime());
-        return Promise.all([
-          fetch(press.SPEED_URL, { ...makeEtagOpts(speedKey), signal: ac.signal })
-            .then(r => etagJSON(r, speedKey)).catch(() => null),
-          fetch(footURL, { ...makeEtagOpts(footKey), signal: ac.signal })
-            .then(r => etagJSON(r, footKey)).catch(() => null)
-        ]);
-      });
-
-      const results = await Promise.all(requests);
-
-      let pressTotals = [];
-      let chartData = [];
-
-      results.forEach((res, idx) => {
-        const [speedData, footageData] = res;
-        const press = PRESSES[idx];
-        const currentSpeed = speedData?.currentSpeed || 0;
-        let arr = cleanEntries(footageData, downtimeStart, downtimeEnd);
-        let lastCum = 0;
-        let chartPoints = [];
-        arr.forEach(e => { lastCum += Number(e.footage); chartPoints.push({ x: new Date(e.ts), y: lastCum }); });
-        chartData.push(chartPoints);
-        pressTotals.push(lastCum);
-        computeAndRenderPress(press, currentSpeed, lastCum, arr, downtimeStart, downtimeEnd);
-      });
-
-      updateCompanyFootageBar(pressTotals);
-      chartData.forEach((points, idx) => { footageChart.data.datasets[idx].data = points; });
-      footageChart.update();
-
-      inFlight = null;
+    // ======= UI ANIMS =======
+    function animateNumber(el, to, duration=7000) {
+      const from = Number((el.textContent || "0").replace(/,/g,"")) || 0;
+      if (Math.abs(to - from) < 1) { el.textContent = to.toLocaleString(); return; }
+      const start = performance.now();
+      function step(now) {
+        const t = Math.min((now - start) / duration, 1);
+        const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        const val = Math.round(from + (to - from) * eased);
+        el.textContent = val.toLocaleString();
+        if (t < 1) requestAnimationFrame(step);
+        else el.textContent = Math.round(to).toLocaleString();
+      }
+      requestAnimationFrame(step);
     }
 
-    function computeAndRenderPress(press, speed, totalFootage, arr, downtimeStart, downtimeEnd) {
-      const rightNow = new Date();
-      const intervalMs = REPORT_INTERVAL_SEC * 1000;
-      let totalDowntimeMin = 0;
-      let currentDownMin = 0;
-      let isCurrentlyDown = false;
-
-      // find last non-zero footage timestamp
-      let lastFootageTs = null;
-      for (let i = arr.length - 1; i >= 0; i--) {
-        if (Number(arr[i].footage) > DOWNTIME_THRESHOLD) { lastFootageTs = arr[i].ts; break; }
-      }
-      // current down?
-      if (arr.length === 0 || Number(arr[arr.length-1].footage) <= DOWNTIME_THRESHOLD) {
-        isCurrentlyDown = true;
-        let downSince = lastFootageTs ? lastFootageTs : downtimeStart.getTime();
-        currentDownMin = Math.round((rightNow.getTime() - downSince) / (60*1000));
-      }
-      // total downtime across the window
-      let timePtr = downtimeStart.getTime();
-      let arrIdx = 0;
-      while (timePtr < rightNow.getTime() && timePtr < downtimeEnd.getTime()) {
-        const windowEnd = timePtr + intervalMs;
-        let rec = arr[arrIdx];
-        let downtime = false;
-        if (rec && rec.ts >= timePtr && rec.ts < windowEnd) {
-          if (Number(rec.footage) <= DOWNTIME_THRESHOLD) downtime = true;
-          arrIdx++;
-        } else {
-          downtime = true;
-        }
-        if (downtime) totalDowntimeMin += REPORT_INTERVAL_SEC / 60;
-        timePtr = windowEnd;
-      }
-
-      updateSpeedBox(press, speed, totalFootage, totalDowntimeMin, currentDownMin, isCurrentlyDown);
-    }
-
-    function updateSpeedBox(press, speed, totalFootage, totalDowntimeMin, currentDownMin, isCurrentlyDown) {
-      const speedEl = document.getElementById('speed-value-' + press.id);
-      const tfTotalEl = document.getElementById('total-footage-' + press.id);
-      const pressNameEl = document.getElementById('press-name-' + press.id);
-      const speedIndicator = document.getElementById('speed-indicator-' + press.id);
-      const fillEl = document.getElementById('speed-fill-' + press.id);
-      const dtLabel = document.getElementById('total-downtime-' + press.id);
-      const warningEl = document.getElementById('down-warning-' + press.id);
+    // ======= RENDER HELPERS =======
+    function updateSpeedCard(press, speed, totalFootage, totalDowntimeMin, currentDownMin, isDown) {
+      const speedEl = byId('speed-value-' + press.id);
+      const tfEl = byId('total-footage-' + press.id);
+      const nameEl = byId('press-name-' + press.id);
+      const indEl = byId('speed-indicator-' + press.id);
+      const fillEl = byId('speed-fill-' + press.id);
+      const dtLabel = byId('total-downtime-' + press.id);
+      const warnEl = byId('down-warning-' + press.id);
+      const card = byId('speed-widget-' + press.id);
 
       animateNumber(speedEl, Math.round(speed), 7000);
-      animateNumber(tfTotalEl, Math.round(totalFootage), 10000);
-      pressNameEl.style.color = press.color; tfTotalEl.style.color = press.color;
-      speedIndicator.className = "speed-indicator"; fillEl.className = "fill";
+      animateNumber(tfEl, Math.round(totalFootage), 10000);
+      nameEl.style.color = press.color; tfEl.style.color = press.color;
 
-      let fillColorClass = 'red';
-      if (speed === 0) { fillColorClass = 'red'; speedIndicator.classList.add('red'); }
-      else if (speed > 0 && speed < 150) { fillColorClass = 'yellow'; speedIndicator.classList.add('yellow'); }
-      else if (speed >= 150 && speed < 300) { fillColorClass = 'green'; speedIndicator.classList.add('green'); }
-      else if (speed >= 300) { fillColorClass = 'bright-green'; speedIndicator.classList.add('bright-green'); }
-      fillEl.classList.add(fillColorClass);
+      indEl.className = "speed-indicator";
+      fillEl.className = "fill";
+      let cls = "red";
+      if (speed === 0) cls = "red";
+      else if (speed < 150) cls = "yellow";
+      else if (speed < 300) cls = "green";
+      else cls = "bright-green";
+      indEl.classList.add(cls); fillEl.classList.add(cls);
+
       const pct = Math.min(speed / 700 * 100, 100) + '%';
       fillEl.style.width = pct;
       speedEl.style.color = getComputedStyle(fillEl).backgroundColor;
 
-      // downtime label formatting
-      let downtimeStr = "";
-      if (totalDowntimeMin < 60) { downtimeStr = `${Math.round(totalDowntimeMin)} min`; }
-      else { let hours = totalDowntimeMin / 60; downtimeStr = `${(hours % 1 === 0 ? hours : hours.toFixed(1))} hour${hours >= 2 ? 's' : ''}`; }
-      dtLabel.innerHTML = `<span class="downtime-icon">⏱️</span> ${downtimeStr}`;
+      // downtime text
+      dtLabel.innerHTML = `<span class="downtime-icon">⏱️</span> ${
+        totalDowntimeMin < 60
+          ? `${Math.round(totalDowntimeMin)} min`
+          : `${(totalDowntimeMin/60)%1===0 ? (totalDowntimeMin/60) : (totalDowntimeMin/60).toFixed(1)} hour${totalDowntimeMin>=120?"s":""}`
+      }`;
 
-      // current down state styling
-      const speedCard = document.getElementById('speed-widget-' + press.id);
-      if (isCurrentlyDown && currentDownMin >= 30) {
-        warningEl.innerHTML = `<span>Down ${currentDownMin} min</span>`;
-        warningEl.style.display = 'flex';
-        speedCard.classList.add('danger');
+      if (isDown && currentDownMin >= 30) {
+        warnEl.textContent = `Down ${currentDownMin} min`;
+        warnEl.style.display = 'flex';
+        card.classList.add('danger');
       } else {
-        warningEl.innerHTML = ``; warningEl.style.display = 'none'; speedCard.classList.remove('danger');
+        warnEl.textContent = '';
+        warnEl.style.display = 'none';
+        card.classList.remove('danger');
       }
     }
 
-    function updateCompanyFootageBar(companyTotals) {
-      let total = companyTotals.reduce((a, b) => a + b, 0);
-      let percent = Math.min((total / COMPANY_GOAL) * 100, 999.9);
+    function updateCompanyBar(totals) {
+      const total = totals.reduce((a,b)=>a+b,0);
+      const percent = Math.min((total / COMPANY_GOAL) * 100, 999.9);
 
-      let etiPct = total ? companyTotals[0] / total * 100 : 0;
-      let nilpeterPct = total ? companyTotals[1] / total * 100 : 0;
-      let aztechPct = total ? companyTotals[2] / total * 100 : 0;
-      let aztech13Pct = total ? companyTotals[3] / total * 100 : 0;
-      let nilpeter13Pct = total ? companyTotals[4] / total * 100 : 0;
-      let slitterPct = total ? companyTotals[5] / total * 100 : 0;
+      const shares = total ? totals.map(x => x/total*100) : totals.map(_=>0);
+      const ids = ['eti','nilpeter','aztech','aztech13','slitter'];
+      const fills = ids.map(id => byId('goal-fill-'+id));
 
-      let goalFillEti = document.getElementById('goal-fill-eti');
-      let goalFillNilpeter = document.getElementById('goal-fill-nilpeter');
-      let goalFillAztech = document.getElementById('goal-fill-aztech');
-      let goalFillAztech13 = document.getElementById('goal-fill-aztech13');
-      let goalFillSlitter = document.getElementById('goal-fill-slitter');
-      let goalPercentLabel = document.getElementById('goal-percent-label');
-      let companyFootageValEl = document.getElementById('company-footage-val');
-      let companyFootageMsg = document.getElementById('company-footage-message');
-      let companyGoalBar = document.getElementById('company-goal-bar');
-      let companyFootageMain = document.getElementById('company-footage-main');
+      // left positions for stacked bar
+      let leftPct = 0;
+      for (let i=0;i<fills.length;i++){
+        fills[i].style.left = (percent * (leftPct/100)) + '%';
+        fills[i].style.width = (percent * (shares[i]/100)) + '%';
+        leftPct += shares[i] || 0;
+      }
 
-      goalFillEti.style.left = '0%';
-      goalFillEti.style.width = (percent * (etiPct/100)) + '%';
-      goalFillNilpeter.style.left = (percent * (etiPct/100)) + '%';
-      goalFillNilpeter.style.width = (percent * (nilpeterPct/100)) + '%';
-      goalFillAztech.style.left = (percent * ((etiPct + nilpeterPct)/100)) + '%';
-      goalFillAztech.style.width = (percent * (aztechPct/100)) + '%';
-      goalFillAztech13.style.left = (percent * ((etiPct + nilpeterPct + aztechPct)/100)) + '%';
-      goalFillAztech13.style.width = (percent * (aztech13Pct/100)) + '%';
-      goalFillSlitter.style.left = (percent * ((etiPct + nilpeterPct + aztechPct + aztech13Pct)/100)) + '%';
-      goalFillSlitter.style.width = (percent * (slitterPct/100)) + '%';
+      byId('goal-percent-label').textContent = percent.toFixed(0)+'%';
+      animateNumber(byId('company-footage-val'), Math.round(total), 10000);
 
-      goalPercentLabel.textContent = percent.toFixed(0) + '%';
-      animateNumber(companyFootageValEl, Math.round(total), 10000);
+      // goal classes/messages
+      const msg = byId('company-footage-message');
+      const bar = byId('company-goal-bar');
+      const head = byId('company-footage-main');
+      const val = byId('company-footage-val');
+      [bar, head, val].forEach(el => { el.classList.remove('goal-hit','goal-over'); });
+      msg.innerHTML = '';
 
-      companyFootageValEl.classList.remove('goal-hit', 'goal-over');
-      companyGoalBar.classList.remove('goal-hit', 'goal-over');
-      companyFootageMain.classList.remove('goal-hit', 'goal-over');
-      companyFootageMsg.innerHTML = '';
-
-      if (total >= COMPANY_GOAL && total < COMPANY_GOAL * 1.10) {
-        companyGoalBar.classList.add('goal-hit');
-        companyFootageValEl.classList.add('goal-hit');
-        companyFootageMain.classList.add('goal-hit');
-        companyFootageMsg.innerHTML = `<span class="goal-hit">Goal Hit! 🚀</span>`;
-      } else if (total >= COMPANY_GOAL * 1.10) {
-        companyGoalBar.classList.add('goal-over');
-        companyFootageValEl.classList.add('goal-over');
-        companyFootageMain.classList.add('goal-over');
-        companyFootageMsg.innerHTML = `<span class="goal-over">Over Goal! 🎉</span>`;
+      if (total >= COMPANY_GOAL * 1.10) {
+        [bar, head, val].forEach(el => el.classList.add('goal-over'));
+        msg.innerHTML = `<span class="goal-over">Over Goal! 🎉</span>`;
+      } else if (total >= COMPANY_GOAL) {
+        [bar, head, val].forEach(el => el.classList.add('goal-hit'));
+        msg.innerHTML = `<span class="goal-hit">Goal Hit! 🚀</span>`;
       } else {
-        companyFootageMsg.innerHTML = `<span style="color:#bbb;font-weight:500;font-size:1rem;">Goal: ${COMPANY_GOAL.toLocaleString()} ft</span>`;
+        msg.innerHTML = `<span style="color:#bbb;font-weight:500;font-size:1rem;">Goal: ${COMPANY_GOAL.toLocaleString()} ft</span>`;
       }
     }
 
-    // ---- Init ----
+    function byId(id){ return document.getElementById(id); }
+
+    // ======= DOWNTIME COMPUTE =======
+    function computeDowntime(arr, startMs, endMs, nowMs) {
+      const intervalMs = REPORT_INTERVAL_SEC * 1000;
+      let totalDowntimeMin = 0;
+      let currentDownMin = 0;
+      let isDown = false;
+
+      // last non-zero footage timestamp
+      let lastUpTs = null;
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if (arr[i].footage > DOWNTIME_THRESHOLD) { lastUpTs = arr[i].ts; break; }
+      }
+
+      if (arr.length === 0 || arr[arr.length-1].footage <= DOWNTIME_THRESHOLD) {
+        isDown = true;
+        const downSince = lastUpTs ?? startMs;
+        currentDownMin = Math.round((Math.min(nowMs, endMs) - downSince) / 60000);
+      }
+
+      let timePtr = startMs;
+      let idx = 0;
+      while (timePtr < nowMs && timePtr < endMs) {
+        const windowEnd = timePtr + intervalMs;
+        let rec = arr[idx];
+        let down = true; // assume down if no record in window
+        if (rec && rec.ts >= timePtr && rec.ts < windowEnd) {
+          down = !(rec.footage > DOWNTIME_THRESHOLD);
+          idx++;
+        }
+        if (down) totalDowntimeMin += REPORT_INTERVAL_SEC / 60;
+        timePtr = windowEnd;
+      }
+
+      return { totalDowntimeMin, currentDownMin, isDown };
+    }
+
+    // ======= MAIN FETCH LOOP (initial + incremental) =======
+    async function refreshAll() {
+      const { start, end, now } = getShiftWindow();
+      const startSec = Math.floor(start.getTime()/1000);
+      const endSec = Math.floor(Math.min(now.getTime(), end.getTime())/1000);
+
+      const pressesResults = await Promise.all(PRESSES.map(async (press) => {
+        // figure incremental window
+        const lastTs = pressState[press.id].lastTs;
+        const incrementalStartSec = lastTs ? Math.floor(lastTs/1000) + 1 : startSec;
+        // cap downloads
+        const expectedPoints = Math.ceil((endSec - incrementalStartSec) / REPORT_INTERVAL_SEC) + 5;
+        const limitToLast = Math.min(
+          lastTs ? MAX_POINTS_INCREMENTAL : MAX_POINTS_INITIAL,
+          Math.max(0, expectedPoints)
+        );
+
+        const footageURL = buildFootageURL(press.FOOTAGE_URL, incrementalStartSec, endSec, limitToLast);
+
+        const [speedData, footageData] = await Promise.all([
+          fetchJSON(press.SPEED_URL).catch(()=>null),
+          fetchJSON(footageURL).catch(()=> ({}))
+        ]);
+
+        return { press, speedData, footageData, start, end, now };
+      }));
+
+      // update state + UI
+      const totals = [];
+
+      pressesResults.forEach(({ press, speedData, footageData, start, end, now }) => {
+        const state = pressState[press.id];
+        const cleaned = cleanEntries(footageData, start.getTime(), end.getTime());
+
+        // If first load (no lastTs), rebuild cum + points from scratch slice
+        if (state.lastTs == null) {
+          state.cum = 0;
+          state.points = [];
+          cleaned.forEach(e => {
+            state.cum += e.footage;
+            state.points.push({ x: new Date(e.ts), y: state.cum });
+            state.lastTs = e.ts; // keep advancing as we go
+          });
+        } else {
+          // incremental: append only new entries
+          cleaned.forEach(e => {
+            state.cum += e.footage;
+            state.points.push({ x: new Date(e.ts), y: state.cum });
+            state.lastTs = e.ts;
+          });
+        }
+
+        // Keep chart memory bounded (optional)
+        if (state.points.length > MAX_POINTS_INITIAL) {
+          state.points.splice(0, state.points.length - MAX_POINTS_INITIAL);
+        }
+
+        // compute downtime using all points we have for the shift
+        const arrForDown = state.points.map(p => ({ ts: p.x.getTime(), footage: 1 })); // use presence of a point as "reported"
+        // Better: recompute from raw cleaned merged, but to avoid downloads,
+        // we approximate downtime with incremental slices:
+        const mergedArr = cleaned.length ? cleaned : []; // when empty, downtime calc will mark gaps as down
+        const { totalDowntimeMin, currentDownMin, isDown } =
+          computeDowntime(mergedArr, start.getTime(), end.getTime(), now.getTime());
+
+        const currentSpeed = Number(speedData?.currentSpeed || 0);
+        totals.push(state.cum);
+
+        // Push to chart dataset
+        const dsIndex = PRESSES.findIndex(p => p.id === press.id);
+        if (dsIndex !== -1) {
+          footageChart.data.datasets[dsIndex].data = state.points;
+        }
+
+        updateSpeedCard(press, currentSpeed, state.cum, totalDowntimeMin, currentDownMin, isDown);
+      });
+
+      // Update company aggregates + chart in one go
+      updateCompanyBar(totals);
+      footageChart.update();
+    }
+
+    // ======= BOOT =======
     setupFootageChart();
-    fetchAllData();
-    // Poll less frequently to reduce calls (20s instead of 10s)
-    setInterval(fetchAllData, 20000);
+    refreshAll();
+    setInterval(refreshAll, POLL_MS);
   </script>
 </body>
 </html>
