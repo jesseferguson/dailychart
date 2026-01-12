@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Production Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
   <style>
     :root {
       --bg: #121212;
@@ -123,6 +124,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="company-footage-bar" id="company-footage-bar">
     <div class="company-footage-main" id="company-footage-main">
@@ -156,7 +158,8 @@
         <span id="total-downtime-ETI" class="downtime-total-label"></span>
         <div id="down-warning-ETI" class="down-warning" style="display:none;"></div>
       </div>
-      <!-- 17" Nilpeter -->
+
+      <!-- 17 Nilpeter -->
       <div class="card speed-card" id="speed-widget-17">
         <div class="press-header-row">
           <span id="speed-indicator-17" class="speed-indicator"></span>
@@ -170,7 +173,8 @@
         <span id="total-downtime-17" class="downtime-total-label"></span>
         <div id="down-warning-17" class="down-warning" style="display:none;"></div>
       </div>
-      <!-- 18" Aztech -->
+
+      <!-- 18 Aztech -->
       <div class="card speed-card" id="speed-widget-18">
         <div class="press-header-row">
           <span id="speed-indicator-18" class="speed-indicator"></span>
@@ -184,6 +188,7 @@
         <span id="total-downtime-18" class="downtime-total-label"></span>
         <div id="down-warning-18" class="down-warning" style="display:none;"></div>
       </div>
+
       <!-- 13AZTECH -->
       <div class="card speed-card" id="speed-widget-13AZTECH">
         <div class="press-header-row">
@@ -198,6 +203,7 @@
         <span id="total-downtime-13AZTECH" class="downtime-total-label"></span>
         <div id="down-warning-13AZTECH" class="down-warning" style="display:none;"></div>
       </div>
+
       <!-- 13NILPETER -->
       <div class="card speed-card" id="speed-widget-13NILPETER">
         <div class="press-header-row">
@@ -212,6 +218,7 @@
         <span id="total-downtime-13NILPETER" class="downtime-total-label"></span>
         <div id="down-warning-13NILPETER" class="down-warning" style="display:none;"></div>
       </div>
+
       <!-- SLITTER -->
       <div class="card speed-card" id="speed-widget-SLITTER">
         <div class="press-header-row">
@@ -237,401 +244,439 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-<script>
-  // ======= CONFIG =======
-  const COMPANY_GOAL = 300000;
-  const REPORT_INTERVAL_SEC = 10;          // server reporting cadence
-  const DOWNTIME_THRESHOLD = 0.01;
-  const REQUEST_TIMEOUT_MS = 6000;
-  const MAX_POINTS_INITIAL = 4000;         // safety cap on first load
-  const MAX_POINTS_INCREMENTAL = 300;      // cap per poll after first load
-  const POLL_MS = 10000;                   // starting poll interval
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
 
-  // ======= SHIFT WINDOW (6:00 AM -> 2:30 AM next day) =======
-  function getShiftWindow() {
-    const now = new Date();
-    const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
-    const start = new Date(base); start.setHours(6,0,0,0);
-    const end = new Date(start); end.setDate(start.getDate()+1); end.setHours(2,30,0,0);
-    return { start, end, now };
-  }
+  <script>
+    // ============================================================
+    // LOW-PAYLOAD DASHBOARD (new RTDB layout)
+    //
+    // It expects your ESP32s to write:
+    //   /p/<ID>/now               -> {"s":<int fpm>,"t":<unix>}
+    //   /p/<ID>/d/YYYY-MM-DD/tot  -> <int tenths_of_foot>
+    //   /p/<ID>/d/YYYY-MM-DD/b/HHMM -> {"f":<int tenths_of_foot>}
+    //
+    // This avoids huge timestamp range queries.
+    // ============================================================
 
-  // ======= DATA SOURCES =======
-  function css(varName){ return getComputedStyle(document.documentElement).getPropertyValue(varName).trim(); }
-  const PRESSES = [
-    { name: 'ETI', id: 'ETI', color: css('--eti'),
-      SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_CURRENT_SPEED.json',
-      FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/ETI_DAILY_SPEED.json' },
-    { name: '17\" Nilpeter', id: '17', color: css('--nilpeter'),
-      SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/17Nilpeter_CURRENT_SPEED.json',
-      FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/17Nilpeter_DAILY_SPEED.json' },
-    { name: '18\" Aztech', id: '18', color: css('--aztech'),
-      SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/18Aztech_CURRENT_SPEED.json',
-      FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/18Aztech_DAILY_SPEED.json' },
-    { name: '13AZTECH', id: '13AZTECH', color: css('--aztech13'),
-      SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13AZTECH_CURRENT_SPEED.json',
-      FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13AZTECH_DAILY_SPEED.json' },
-    { name: '13NILPETER', id: '13NILPETER', color: css('--nilpeter13'),
-      SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13NILPETER_CURRENT_SPEED.json',
-      FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/13NILPETER_DAILY_SPEED.json' },
-    { name: 'SLITTER', id: 'SLITTER', color: css('--slitter'),
-      SPEED_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/SLITTER_CURRENT_SPEED.json',
-      FOOTAGE_URL: 'https://realtime-database-8bbe2-default-rtdb.firebaseio.com/SLITTER_DAILY_SPEED.json' },
-  ];
+    // ======= CONFIG =======
+    const COMPANY_GOAL = 300000;
 
-  // ======= STATE (per press) for incremental fetches =======
-  const pressState = {}; // id -> { lastTs:number|null, cum:number, points:Array<{x,y}> }
-  PRESSES.forEach(p => pressState[p.id] = { lastTs: null, cum: 0, points: [] });
+    // Use the SAME DB host you’ve been using in your HTML:
+    const FIREBASE_BASE = "https://realtime-database-8bbe2-default-rtdb.firebaseio.com";
 
-  // ======= FETCH HELPERS =======
-  function buildFootageURL(baseUrl, startSec, endSec, limitToLast) {
-    const params = new URLSearchParams({
-      orderBy: '"timestamp"',
-      startAt: String(startSec),
-      endAt: String(endSec),
-      limitToLast: String(limitToLast)
-    });
-    return `${baseUrl}?${params.toString()}`;
-  }
+    // 10-minute buckets => max 144 points/day/press
+    const BUCKET_MINUTES = 10;
 
-  // ---- ETag cache for conditional GETs (huge savings when unchanged) ----
-  const etags = new Map(); // key: full URL (including query), value: ETag string
+    // Polling: now+tot+currentBucket are tiny, so 10s is fine
+    const POLL_MS = 10000;
 
-  async function fetchJSON_ETag(url, timeoutMs = REQUEST_TIMEOUT_MS) {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    // ======= SHIFT WINDOW (6:00 AM -> 2:30 AM next day) =======
+    function getShiftWindow() {
+      const now = new Date();
+      const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
+      const start = new Date(base); start.setHours(6,0,0,0);
+      const end = new Date(start); end.setDate(start.getDate()+1); end.setHours(2,30,0,0);
+      return { start, end, now };
+    }
 
-    const headers = { 'X-Firebase-ETag': 'true' };
-    const prev = etags.get(url);
-    if (prev) headers['If-None-Match'] = prev;
+    // ======= UTILS =======
+    function css(varName){ return getComputedStyle(document.documentElement).getPropertyValue(varName).trim(); }
+    function pad2(n){ return String(n).padStart(2,'0'); }
+    function dateStrLocal(d) { return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+    function bucketKeyFromDate(d) {
+      const m = Math.floor(d.getMinutes() / BUCKET_MINUTES) * BUCKET_MINUTES;
+      return `${pad2(d.getHours())}${pad2(m)}`; // HHMM
+    }
+    function hhmmToDate(dateStr, hhmm) {
+      const [y,mo,da] = dateStr.split("-").map(Number);
+      const hh = Number(hhmm.slice(0,2));
+      const mm = Number(hhmm.slice(2,4));
+      return new Date(y, mo-1, da, hh, mm, 0, 0);
+    }
 
-    try {
-      const res = await fetch(url, { headers, signal: ctrl.signal, cache: 'no-store' });
+    // Path helpers (append print=silent to reduce response bloat)
+    function urlNow(id) { return `${FIREBASE_BASE}/p/${id}/now.json?print=silent`; }
+    function urlDayTot(id, dateStr) { return `${FIREBASE_BASE}/p/${id}/d/${dateStr}/tot.json?print=silent`; }
+    function urlDayBuckets(id, dateStr) { return `${FIREBASE_BASE}/p/${id}/d/${dateStr}/b.json?print=silent`; }
+    function urlBucket(id, dateStr, hhmm) { return `${FIREBASE_BASE}/p/${id}/d/${dateStr}/b/${hhmm}.json?print=silent`; }
 
-      if (res.status === 304) {
-        // unchanged → near-zero billed bytes + we skip work
-        return { unchanged: true, data: null };
+    // ======= PRESSES (IDs match your DOM ids) =======
+    const PRESSES = [
+      { name: 'ETI', id: 'ETI', color: css('--eti') },
+      { name: '17" Nilpeter', id: '17', color: css('--nilpeter') },
+      { name: '18" Aztech', id: '18', color: css('--aztech') },
+      { name: '13AZTECH', id: '13AZTECH', color: css('--aztech13') },
+      { name: '13NILPETER', id: '13NILPETER', color: css('--nilpeter13') },
+      { name: 'SLITTER', id: 'SLITTER', color: css('--slitter') },
+    ];
+
+    // ======= ETag fetch (saves bytes when unchanged) =======
+    const etags = new Map(); // url -> etag
+
+    async function fetchJSON_ETag(url, timeoutMs = 6000) {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+
+      const headers = { 'X-Firebase-ETag': 'true' };
+      const prev = etags.get(url);
+      if (prev) headers['If-None-Match'] = prev;
+
+      try {
+        const res = await fetch(url, { headers, signal: ctrl.signal, cache: 'no-store' });
+        if (res.status === 304) return { unchanged: true, data: null };
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const etag = res.headers.get('ETag');
+        if (etag) etags.set(url, etag);
+        const data = await res.json();
+        return { unchanged: false, data };
+      } finally {
+        clearTimeout(t);
       }
+    }
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const etag = res.headers.get('ETag');
-      if (etag) etags.set(url, etag);
-
-      const data = await res.json();
-      return { unchanged: false, data };
-    } finally { clearTimeout(t); }
-  }
-
-  // ======= DATA CLEANUP =======
-  function cleanEntries(raw, dStartMs, dEndMs) {
-    return Object.values(raw || {})
-      .map(v => (v && v.timestamp!=null && v.footage!=null) ? { ts: Number(v.timestamp)*1000, footage: Number(v.footage) } : null)
-      .filter(e => e && e.ts >= dStartMs && e.ts < dEndMs)
-      .sort((a,b) => a.ts - b.ts);
-  }
-
-  // ======= CHART =======
-  let footageChart;
-  function setupFootageChart() {
-    const ctx = document.getElementById('footageChart').getContext('2d');
-    footageChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        datasets: PRESSES.map(press => ({
-          label: press.name,
-          data: [],
-          fill: false,
-          borderWidth: 2,
-          tension: 0.3,
-          borderColor: press.color,
-          pointRadius: 0,
-          pointHoverRadius: 0,
-          pointBackgroundColor: press.color
-        }))
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: true } },
-        scales: {
-          x: {
-            type: 'time',
-            time: { unit: 'hour', displayFormats: { hour: 'ha' } },
-            ticks: { color: css('--text') },
-            grid: { color: 'rgba(255,255,255,0.1)' }
-          },
-          y: {
-            ticks: { color: css('--text'), font: { size: 16 } },
-            grid: { color: 'rgba(255,255,255,0.1)' }
-          }
+    // ======= CHART =======
+    let footageChart;
+    function setupFootageChart() {
+      const ctx = document.getElementById('footageChart').getContext('2d');
+      footageChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: PRESSES.map(press => ({
+            label: press.name,
+            data: [],
+            fill: false,
+            borderWidth: 2,
+            tension: 0.3,
+            borderColor: press.color,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            pointBackgroundColor: press.color
+          }))
         },
-        animation: { duration: 220, easing: 'easeOutQuart' }
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: true } },
+          scales: {
+            x: {
+              type: 'time',
+              time: { unit: 'hour', displayFormats: { hour: 'ha' } },
+              ticks: { color: css('--text') },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            },
+            y: {
+              ticks: { color: css('--text'), font: { size: 16 } },
+              grid: { color: 'rgba(255,255,255,0.1)' }
+            }
+          },
+          animation: { duration: 220, easing: 'easeOutQuart' }
+        }
+      });
+    }
+
+    // ======= UI HELPERS =======
+    function byId(id){ return document.getElementById(id); }
+    function getDisplayedNumber(el){ return Number(String(el?.textContent||'0').replace(/,/g,''))||0; }
+
+    function animateNumber(el, to, duration=7000) {
+      const from = Number((el.textContent || "0").replace(/,/g,"")) || 0;
+      if (Math.abs(to - from) < 1) { el.textContent = to.toLocaleString(); return; }
+      const start = performance.now();
+      function step(now) {
+        const t = Math.min((now - start) / duration, 1);
+        const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        const val = Math.round(from + (to - from) * eased);
+        el.textContent = val.toLocaleString();
+        if (t < 1) requestAnimationFrame(step);
+        else el.textContent = Math.round(to).toLocaleString();
       }
+      requestAnimationFrame(step);
+    }
+
+    function updateSpeedCard(press, speed, totalFootage, totalDowntimeMin, currentDownMin, isDown) {
+      const speedEl = byId('speed-value-' + press.id);
+      const tfEl = byId('total-footage-' + press.id);
+      const nameEl = byId('press-name-' + press.id);
+      const indEl = byId('speed-indicator-' + press.id);
+      const fillEl = byId('speed-fill-' + press.id);
+      const dtLabel = byId('total-downtime-' + press.id);
+      const warnEl = byId('down-warning-' + press.id);
+      const card = byId('speed-widget-' + press.id);
+
+      animateNumber(speedEl, Math.round(speed), 7000);
+      animateNumber(tfEl, Math.round(totalFootage), 10000);
+      nameEl.style.color = press.color; tfEl.style.color = press.color;
+
+      indEl.className = "speed-indicator";
+      fillEl.className = "fill";
+      let cls = "red";
+      if (speed === 0) cls = "red";
+      else if (speed < 150) cls = "yellow";
+      else if (speed < 300) cls = "green";
+      else cls = "bright-green";
+      indEl.classList.add(cls); fillEl.classList.add(cls);
+
+      const pct = Math.min(speed / 700 * 100, 100) + '%';
+      fillEl.style.width = pct;
+      speedEl.style.color = getComputedStyle(fillEl).backgroundColor;
+
+      // downtime label
+      if (totalDowntimeMin > 0) {
+        dtLabel.innerHTML = `<span class="downtime-icon">⏱️</span> ${
+          totalDowntimeMin < 60
+            ? `${Math.round(totalDowntimeMin)} min`
+            : `${(totalDowntimeMin/60)%1===0 ? (totalDowntimeMin/60) : (totalDowntimeMin/60).toFixed(1)} hour${totalDowntimeMin>=120?"s":""}`
+        }`;
+      } else {
+        dtLabel.innerHTML = `<span class="downtime-icon">⏱️</span> 0 min`;
+      }
+
+      if (isDown && currentDownMin >= 30) {
+        warnEl.textContent = `Down ${currentDownMin} min`;
+        warnEl.style.display = 'flex';
+        card.classList.add('danger');
+      } else {
+        warnEl.textContent = '';
+        warnEl.style.display = 'none';
+        card.classList.remove('danger');
+      }
+    }
+
+    function updateCompanyBar(totals) {
+      const total = totals.reduce((a,b)=>a+b,0);
+      const percent = Math.min((total / COMPANY_GOAL) * 100, 999.9);
+
+      const shares = total ? totals.map(x => x/total*100) : totals.map(_=>0);
+      const ids = ['eti','nilpeter','aztech','aztech13','slitter'];
+      const fills = ids.map(id => byId('goal-fill-'+id));
+
+      let leftPct = 0;
+      for (let i=0;i<fills.length;i++){
+        fills[i].style.left = (percent * (leftPct/100)) + '%';
+        fills[i].style.width = (percent * (shares[i]/100)) + '%';
+        leftPct += shares[i] || 0;
+      }
+
+      byId('goal-percent-label').textContent = percent.toFixed(0)+'%';
+      animateNumber(byId('company-footage-val'), Math.round(total), 10000);
+
+      const msg = byId('company-footage-message');
+      const bar = byId('company-goal-bar');
+      const head = byId('company-footage-main');
+      const val = byId('company-footage-val');
+      [bar, head, val].forEach(el => { el.classList.remove('goal-hit','goal-over'); });
+      msg.innerHTML = '';
+
+      if (total >= COMPANY_GOAL * 1.10) {
+        [bar, head, val].forEach(el => el.classList.add('goal-over'));
+        msg.innerHTML = `<span class="goal-over">Over Goal! 🎉</span>`;
+      } else if (total >= COMPANY_GOAL) {
+        [bar, head, val].forEach(el => el.classList.add('goal-hit'));
+        msg.innerHTML = `<span class="goal-hit">Goal Hit! 🚀</span>`;
+      } else {
+        msg.innerHTML = `<span style="color:#bbb;font-weight:500;font-size:1rem;">Goal: ${COMPANY_GOAL.toLocaleString()} ft</span>`;
+      }
+    }
+
+    // ======= STATE =======
+    const pressState = {}; // id -> { loadedDate, cum, points, seenBuckets:Set, lastNonZeroBucket:string|null }
+    PRESSES.forEach(p => pressState[p.id] = {
+      loadedDate: null,
+      cum: 0,
+      points: [],
+      seenBuckets: new Set(),
+      lastNonZeroBucket: null,
     });
-  }
 
-  // ======= UI ANIMS =======
-  function animateNumber(el, to, duration=7000) {
-    const from = Number((el.textContent || "0").replace(/,/g,"")) || 0;
-    if (Math.abs(to - from) < 1) { el.textContent = to.toLocaleString(); return; }
-    const start = performance.now();
-    function step(now) {
-      const t = Math.min((now - start) / duration, 1);
-      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      const val = Math.round(from + (to - from) * eased);
-      el.textContent = val.toLocaleString();
-      if (t < 1) requestAnimationFrame(step);
-      else el.textContent = Math.round(to).toLocaleString();
-    }
-    requestAnimationFrame(step);
-  }
-
-  // ======= RENDER HELPERS =======
-  function byId(id){ return document.getElementById(id); }
-  function getDisplayedNumber(el){ return Number(String(el?.textContent||'0').replace(/,/g,''))||0; }
-
-  function updateSpeedCard(press, speed, totalFootage, totalDowntimeMin, currentDownMin, isDown) {
-    const speedEl = byId('speed-value-' + press.id);
-    const tfEl = byId('total-footage-' + press.id);
-    const nameEl = byId('press-name-' + press.id);
-    const indEl = byId('speed-indicator-' + press.id);
-    const fillEl = byId('speed-fill-' + press.id);
-    const dtLabel = byId('total-downtime-' + press.id);
-    const warnEl = byId('down-warning-' + press.id);
-    const card = byId('speed-widget-' + press.id);
-
-    animateNumber(speedEl, Math.round(speed), 7000);
-    animateNumber(tfEl, Math.round(totalFootage), 10000);
-    nameEl.style.color = press.color; tfEl.style.color = press.color;
-
-    indEl.className = "speed-indicator";
-    fillEl.className = "fill";
-    let cls = "red";
-    if (speed === 0) cls = "red";
-    else if (speed < 150) cls = "yellow";
-    else if (speed < 300) cls = "green";
-    else cls = "bright-green";
-    indEl.classList.add(cls); fillEl.classList.add(cls);
-
-    const pct = Math.min(speed / 700 * 100, 100) + '%';
-    fillEl.style.width = pct;
-    speedEl.style.color = getComputedStyle(fillEl).backgroundColor;
-
-    dtLabel.innerHTML = `<span class="downtime-icon">⏱️</span> ${
-      totalDowntimeMin < 60
-        ? `${Math.round(totalDowntimeMin)} min`
-        : `${(totalDowntimeMin/60)%1===0 ? (totalDowntimeMin/60) : (totalDowntimeMin/60).toFixed(1)} hour${totalDowntimeMin>=120?"s":""}`
-    }`;
-
-    if (isDown && currentDownMin >= 30) {
-      warnEl.textContent = `Down ${currentDownMin} min`;
-      warnEl.style.display = 'flex';
-      card.classList.add('danger');
-    } else {
-      warnEl.textContent = '';
-      warnEl.style.display = 'none';
-      card.classList.remove('danger');
-    }
-  }
-
-  function updateCompanyBar(totals) {
-    const total = totals.reduce((a,b)=>a+b,0);
-    const percent = Math.min((total / COMPANY_GOAL) * 100, 999.9);
-
-    const shares = total ? totals.map(x => x/total*100) : totals.map(_=>0);
-    const ids = ['eti','nilpeter','aztech','aztech13','slitter'];
-    const fills = ids.map(id => byId('goal-fill-'+id));
-
-    // left positions for stacked bar
-    let leftPct = 0;
-    for (let i=0;i<fills.length;i++){
-      fills[i].style.left = (percent * (leftPct/100)) + '%';
-      fills[i].style.width = (percent * (shares[i]/100)) + '%';
-      leftPct += shares[i] || 0;
-    }
-
-    byId('goal-percent-label').textContent = percent.toFixed(0)+'%';
-    animateNumber(byId('company-footage-val'), Math.round(total), 10000);
-
-    const msg = byId('company-footage-message');
-    const bar = byId('company-goal-bar');
-    const head = byId('company-footage-main');
-    const val = byId('company-footage-val');
-    [bar, head, val].forEach(el => { el.classList.remove('goal-hit','goal-over'); });
-    msg.innerHTML = '';
-
-    if (total >= COMPANY_GOAL * 1.10) {
-      [bar, head, val].forEach(el => el.classList.add('goal-over'));
-      msg.innerHTML = `<span class="goal-over">Over Goal! 🎉</span>`;
-    } else if (total >= COMPANY_GOAL) {
-      [bar, head, val].forEach(el => el.classList.add('goal-hit'));
-      msg.innerHTML = `<span class="goal-hit">Goal Hit! 🚀</span>`;
-    } else {
-      msg.innerHTML = `<span style="color:#bbb;font-weight:500;font-size:1rem;">Goal: ${COMPANY_GOAL.toLocaleString()} ft</span>`;
-    }
-  }
-
-  // ======= DOWNTIME COMPUTE =======
-  function computeDowntime(arr, startMs, endMs, nowMs) {
-    const intervalMs = REPORT_INTERVAL_SEC * 1000;
-    let totalDowntimeMin = 0;
-    let currentDownMin = 0;
-    let isDown = false;
-
-    // last non-zero footage timestamp
-    let lastUpTs = null;
-    for (let i = arr.length - 1; i >= 0; i--) {
-      if (arr[i].footage > DOWNTIME_THRESHOLD) { lastUpTs = arr[i].ts; break; }
-    }
-
-    if (arr.length === 0 || arr[arr.length-1].footage <= DOWNTIME_THRESHOLD) {
-      isDown = true;
-      const downSince = lastUpTs ?? startMs;
-      currentDownMin = Math.round((Math.min(nowMs, endMs) - downSince) / 60000);
-    }
-
-    let timePtr = startMs;
-    let idx = 0;
-    while (timePtr < nowMs && timePtr < endMs) {
-      const windowEnd = timePtr + intervalMs;
-      let rec = arr[idx];
-      let down = true; // assume down if no record in window
-      if (rec && rec.ts >= timePtr && rec.ts < windowEnd) {
-        down = !(rec.footage > DOWNTIME_THRESHOLD);
-        idx++;
-      }
-      if (down) totalDowntimeMin += REPORT_INTERVAL_SEC / 60;
-      timePtr = windowEnd;
-    }
-
-    return { totalDowntimeMin, currentDownMin, isDown };
-  }
-
-  // ======= MAIN FETCH LOOP (ETag + incremental) =======
-  async function refreshAll() {
-    let anyChange = false; // track if anything changed this cycle
-
-    const { start, end, now } = getShiftWindow();
-    const startSec = Math.floor(start.getTime()/1000);
-    const endSec = Math.floor(Math.min(now.getTime(), end.getTime())/1000);
-
-    const pressesResults = await Promise.all(PRESSES.map(async (press) => {
-      // incremental window
-      const lastTs = pressState[press.id].lastTs;
-      const incrementalStartSec = lastTs ? Math.floor(lastTs/1000) + 1 : startSec;
-
-      // cap downloads
-      const expectedPoints = Math.ceil((endSec - incrementalStartSec) / REPORT_INTERVAL_SEC) + 5;
-      const limitToLast = Math.min(
-        lastTs ? MAX_POINTS_INCREMENTAL : MAX_POINTS_INITIAL,
-        Math.max(0, expectedPoints)
-      );
-
-      const footageURL = buildFootageURL(press.FOOTAGE_URL, incrementalStartSec, endSec, limitToLast);
-
-      // ETag-aware requests (huge savings when unchanged)
-      const [speedRes, footageRes] = await Promise.all([
-        fetchJSON_ETag(press.SPEED_URL).catch(() => ({ unchanged: true, data: null })),
-        fetchJSON_ETag(footageURL).catch(() => ({ unchanged: true, data: null }))
-      ]);
-
-      return { press, speedRes, footageRes, start, end, now };
-    }));
-
-    const totals = [];
-
-    pressesResults.forEach(({ press, speedRes, footageRes, start, end, now }) => {
+    // ======= DAILY LOAD (once per day) =======
+    async function loadDayBucketsOnce(press, dateStr, startMs, endMs) {
       const state = pressState[press.id];
+      const bucketsURL = urlDayBuckets(press.id, dateStr);
 
-      // Only process footage if changed; otherwise skip work and DOM writes
-      const cleaned = footageRes.unchanged
-        ? []
-        : cleanEntries(footageRes.data, start.getTime(), end.getTime());
+      const res = await fetchJSON_ETag(bucketsURL).catch(() => ({ unchanged: true, data: null }));
+      if (res.unchanged) return false;
 
-      if (!footageRes.unchanged && cleaned.length) {
-        anyChange = true;
-        if (state.lastTs == null) { state.cum = 0; state.points = []; }
-        cleaned.forEach(e => {
-          state.cum += e.footage;
-          state.points.push({ x: new Date(e.ts), y: state.cum });
-          state.lastTs = e.ts;
-        });
-        if (state.points.length > MAX_POINTS_INITIAL) {
-          state.points.splice(0, state.points.length - MAX_POINTS_INITIAL);
-        }
-        const dsIndex = PRESSES.findIndex(p => p.id === press.id);
-        if (dsIndex !== -1) {
-          footageChart.data.datasets[dsIndex].data = state.points;
-        }
+      // Reset curve each day-load
+      state.cum = 0;
+      state.points = [];
+      state.seenBuckets = new Set();
+      state.lastNonZeroBucket = null;
+
+      const raw = res.data || {};
+      const entries = Object.entries(raw)
+        .map(([hhmm, obj]) => ({ hhmm, f10: Number(obj?.f ?? 0) }))
+        .sort((a,b) => a.hhmm.localeCompare(b.hhmm));
+
+      for (const e of entries) {
+        state.seenBuckets.add(e.hhmm);
+
+        const x = hhmmToDate(dateStr, e.hhmm);
+        const ts = x.getTime();
+        if (ts < startMs || ts >= endMs) continue;
+
+        if (e.f10 > 0) state.lastNonZeroBucket = e.hhmm;
+        state.cum += (e.f10 / 10.0);
+        state.points.push({ x, y: state.cum });
       }
 
-      // Speed (cheap; still ETag'd). If unchanged, keep displayed value.
-      let currentSpeed;
-      if (speedRes.unchanged) {
-        currentSpeed = getDisplayedNumber(byId('speed-value-' + press.id));
+      return true;
+    }
+
+    // ======= INCREMENTAL (only current bucket) =======
+    async function refreshCurrentBucket(press, dateStr, startMs, endMs) {
+      const state = pressState[press.id];
+      const hhmm = bucketKeyFromDate(new Date());
+
+      if (state.seenBuckets.has(hhmm)) return false;
+
+      const u = urlBucket(press.id, dateStr, hhmm);
+      const res = await fetchJSON_ETag(u).catch(() => ({ unchanged: true, data: null }));
+      if (res.unchanged) return false;
+
+      const f10 = Number(res.data?.f ?? 0);
+
+      const x = hhmmToDate(dateStr, hhmm);
+      const ts = x.getTime();
+      if (ts < startMs || ts >= endMs) {
+        // mark seen so we don't refetch forever
+        state.seenBuckets.add(hhmm);
+        return false;
+      }
+
+      state.seenBuckets.add(hhmm);
+      if (f10 > 0) state.lastNonZeroBucket = hhmm;
+
+      state.cum += (f10 / 10.0);
+      state.points.push({ x, y: state.cum });
+
+      // safety cap (more than enough)
+      if (state.points.length > 4000) state.points.splice(0, state.points.length - 4000);
+
+      return true;
+    }
+
+    // ======= DOWNTIME (bucket-based, low CPU) =======
+    function computeDowntimeFromBuckets(pressId, dateStr, startMs, endMs, nowMs) {
+      const state = pressState[pressId];
+
+      // total downtime: count buckets with 0 delta
+      // (we can only infer downtime if the device writes 0 buckets.
+      // If the device SKIPS writing when down, you’ll want it to write f=0 each bucket.)
+      let totalDownBuckets = 0;
+
+      // Build a quick map of bucket->delta from points:
+      // points are cumulative; delta is difference between adjacent points.
+      // If the device always writes each bucket, a missing bucket won't appear here.
+      // So: if you care about downtime, ensure device writes an entry every bucket.
+      for (let i = 0; i < state.points.length; i++) {
+        const prev = i === 0 ? 0 : state.points[i-1].y;
+        const curr = state.points[i].y;
+        const delta = curr - prev;
+        if (delta <= 0.00001) totalDownBuckets++;
+      }
+
+      const totalDowntimeMin = totalDownBuckets * BUCKET_MINUTES;
+
+      // current down minutes: from last nonzero bucket time
+      let currentDownMin = 0;
+      if (state.lastNonZeroBucket) {
+        const lastUp = hhmmToDate(dateStr, state.lastNonZeroBucket).getTime();
+        currentDownMin = Math.max(0, Math.round((Math.min(nowMs, endMs) - lastUp) / 60000));
       } else {
-        anyChange = true;
-        currentSpeed = Number(speedRes.data?.currentSpeed || 0);
+        currentDownMin = Math.max(0, Math.round((Math.min(nowMs, endMs) - startMs) / 60000));
       }
 
-      // Downtime: recompute only when footage changed; otherwise skip heavy math
-      const { totalDowntimeMin, currentDownMin, isDown } =
-        cleaned.length
-          ? computeDowntime(cleaned, start.getTime(), end.getTime(), now.getTime())
-          : { totalDowntimeMin: 0, currentDownMin: 0, isDown: false };
+      return { totalDowntimeMin, currentDownMin };
+    }
 
-      totals.push(pressState[press.id].cum || 0);
-      updateSpeedCard(press, currentSpeed, pressState[press.id].cum || 0, totalDowntimeMin, currentDownMin, isDown);
+    // ======= MAIN REFRESH =======
+    async function refreshAll() {
+      let anyChange = false;
+
+      const { start, end, now } = getShiftWindow();
+      const dateStr = dateStrLocal(start);
+      const startMs = start.getTime();
+      const endMs = Math.min(now.getTime(), end.getTime());
+
+      // Day load once per press per date
+      await Promise.all(PRESSES.map(async press => {
+        const st = pressState[press.id];
+        if (st.loadedDate !== dateStr) {
+          st.loadedDate = dateStr;
+          const changed = await loadDayBucketsOnce(press, dateStr, startMs, endMs);
+          if (changed) anyChange = true;
+
+          const dsIndex = PRESSES.findIndex(p => p.id === press.id);
+          if (dsIndex !== -1) footageChart.data.datasets[dsIndex].data = st.points;
+        }
+      }));
+
+      // Poll tiny endpoints: now + tot + current bucket
+      const totals = await Promise.all(PRESSES.map(async press => {
+        const [nowRes, totRes, bucketChanged] = await Promise.all([
+          fetchJSON_ETag(urlNow(press.id)).catch(() => ({ unchanged: true, data: null })),
+          fetchJSON_ETag(urlDayTot(press.id, dateStr)).catch(() => ({ unchanged: true, data: null })),
+          refreshCurrentBucket(press, dateStr, startMs, endMs).catch(() => false)
+        ]);
+
+        if (!nowRes.unchanged) anyChange = true;
+        if (!totRes.unchanged) anyChange = true;
+        if (bucketChanged) anyChange = true;
+
+        // speed uses 's' (int fpm)
+        const speed = nowRes.unchanged
+          ? getDisplayedNumber(byId('speed-value-' + press.id))
+          : Number(nowRes.data?.s || 0);
+
+        // tot is tenths-of-foot int
+        const totalFootage = totRes.unchanged
+          ? (pressState[press.id].cum || 0)
+          : (Number(totRes.data || 0) / 10.0);
+
+        // keep local cum aligned to tot if tot comes in
+        if (!totRes.unchanged) pressState[press.id].cum = totalFootage;
+
+        // update chart dataset if bucket changed or day loaded
+        if (bucketChanged) {
+          const dsIndex = PRESSES.findIndex(p => p.id === press.id);
+          if (dsIndex !== -1) footageChart.data.datasets[dsIndex].data = pressState[press.id].points;
+        }
+
+        const { totalDowntimeMin, currentDownMin } =
+          computeDowntimeFromBuckets(press.id, dateStr, startMs, endMs, now.getTime());
+
+        const isDown = speed <= 0;
+
+        updateSpeedCard(press, speed, totalFootage, totalDowntimeMin, currentDownMin, isDown);
+        return totalFootage;
+      }));
+
+      updateCompanyBar(totals);
+      if (anyChange) footageChart.update();
+
+      return anyChange;
+    }
+
+    // ======= POLLER (simple + pauses when hidden) =======
+    let pollTimer = null;
+
+    async function tick() {
+      await refreshAll();
+      pollTimer = setTimeout(tick, POLL_MS);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (pollTimer) clearTimeout(pollTimer);
+        pollTimer = null;
+      } else {
+        if (!pollTimer) tick();
+      }
     });
 
-    updateCompanyBar(totals);
-    if (anyChange) footageChart.update();
-
-    return anyChange; // tells the adaptive poller whether to back off or speed up
-  }
-
-  // ======= ADAPTIVE POLLER (backs off when unchanged) =======
-  let pollTimer = null;
-  let currentInterval = POLL_MS;
-  let unchangedStreak = 0;
-  const MIN_POLL_MS = 5000;     // fastest we'll go
-  const MAX_POLL_MS = 60000;    // slowest we'll go (1 min)
-
-  function scheduleNext() {
-    if (pollTimer) clearTimeout(pollTimer);
-    pollTimer = setTimeout(async () => {
-      const changed = await refreshAll();
-      if (changed) {
-        unchangedStreak = 0;
-        currentInterval = Math.max(MIN_POLL_MS, Math.floor(currentInterval * 0.5)); // speed up on change
-      } else {
-        unchangedStreak++;
-        const factor = unchangedStreak < 3 ? 1.5 : 2.0; // gradually back off
-        currentInterval = Math.min(MAX_POLL_MS, Math.floor(currentInterval * factor));
-      }
-      scheduleNext();
-    }, currentInterval);
-  }
-
-  // Pause polling when the tab isn't visible (saves bytes & CPU)
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      if (pollTimer) clearTimeout(pollTimer);
-      pollTimer = null;
-    } else {
-      currentInterval = POLL_MS;
-      unchangedStreak = 0;
-      scheduleNext();
-    }
-  });
-
-  // ======= BOOT =======
-  setupFootageChart();
-  currentInterval = POLL_MS;
-  scheduleNext();
-</script>
-
+    // ======= BOOT =======
+    setupFootageChart();
+    tick();
+  </script>
 </body>
 </html>
