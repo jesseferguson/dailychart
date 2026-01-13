@@ -1,22 +1,213 @@
+
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>18 Aztech – Daily Footage</title>
-  <script>
+  <style>
+    :root {
+      --bg: #0b0c0f;
+      --card: #14161c;
+      --muted: #a9afbf;
+      --text: #f3f5fb;
+      --line: rgba(255,255,255,.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      background: radial-gradient(1200px 600px at 20% 0%, #141827 0%, var(--bg) 55%);
+      color: var(--text);
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+    .top {
+      display: grid;
+      grid-template-columns: 1.4fr .6fr;
+      gap: 14px;
+    }
+    @media (max-width: 900px) {
+      .top { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    }
+    .cardHeader {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+    .sub {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .chartArea {
+      padding: 12px 12px 16px;
+    }
+    canvas {
+      width: 100%;
+      height: 380px;
+      display: block;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 14px;
+    }
+
+    .side {
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+    }
+    .metricBox {
+      padding: 14px 16px;
+    }
+    .metricLabel {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .metricValue {
+      font-size: 52px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: .5px;
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.25);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 999px;
+      background: #999;
+    }
+
+    .speedCard {
+      border-top: 1px solid var(--line);
+    }
+    .speedInner {
+      padding: 16px;
+      transition: background 400ms ease;
+    }
+    .speedRow {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .speedName {
+      font-weight: 800;
+      font-size: 18px;
+    }
+    .speedNum {
+      font-size: 60px;
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .5px;
+    }
+    .hint {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .error {
+      padding: 10px 12px;
+      margin: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,80,80,.25);
+      background: rgba(255,80,80,.08);
+      color: rgba(255,220,220,.95);
+      font-size: 12px;
+      display: none;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="card">
+        <div class="cardHeader">
+          <div class="title">Daily Footage (18 Aztech)</div>
+          <div class="sub" id="rangeText">—</div>
+        </div>
+        <div class="chartArea">
+          <canvas id="chart" width="1200" height="420"></canvas>
+          <div class="error" id="errBox"></div>
+        </div>
+      </div>
+
+      <div class="card side">
+        <div class="metricBox">
+          <div class="metricLabel">Total (Today)</div>
+          <div class="metricValue" id="totValue">—</div>
+          <div class="pill">
+            <span class="dot" id="totDot"></span>
+            <span id="totUpdated">Last updated: —</span>
+          </div>
+        </div>
+
+        <div class="speedCard">
+          <div class="speedInner" id="speedBg">
+            <div class="speedRow">
+              <div>
+                <div class="speedName">18 Aztech</div>
+                <div class="hint">Current speed (FPM). Colors: red &lt; 70, orange &lt; 200, green ≥ 350.</div>
+              </div>
+              <div class="speedNum" id="speedValue">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div></div>
+      </div>
+    </div>
+  </div>
+
+<script>
 (() => {
   // =========================
   // MUST MATCH ESP32 ENDPOINTS
   // =========================
   const FIREBASE_BASE = "https://realtime2-94ff8-default-rtdb.firebaseio.com";
 
-  // ESP32 writes HERE:
+  // ESP32 writes here:
   const SPEED_NODE = "/18Aztech_CURRENT_SPEED.json"; // PUT {currentSpeed, timestamp}
-  const DAILY_NODE  = "/18Aztech_DAILY_SPEED.json";  // POST {footage, timestamp} (creates list)
+  const DAILY_NODE = "/18Aztech_DAILY_SPEED.json";   // POST list items {footage, timestamp}
 
+  // Reads:
   const urlSpeed = () => `${FIREBASE_BASE}${SPEED_NODE}?print=silent`;
-  const urlDaily = () => `${FIREBASE_BASE}${DAILY_NODE}.json`; // must end with .json
+  const urlDaily = () => `${FIREBASE_BASE}${DAILY_NODE}.json`; // list read
 
   // =========================
   // Helpers
@@ -45,7 +236,7 @@
     return Math.round(Number(n)).toLocaleString();
   }
 
-  // From 5:00 AM local time today to now, 10-min steps
+  // Build 10-min buckets from 5:00 AM local -> now
   function buildBucketsToday() {
     const now = new Date();
     const start = new Date(now);
@@ -60,6 +251,7 @@
     return { start, now, buckets };
   }
 
+  // Speed color logic
   function speedBgFor(v) {
     const n = Number(v) || 0;
     if (n < 70) return "rgba(255, 60, 60, .12)";
@@ -75,6 +267,7 @@
     return "#a9afbf";
   }
 
+  // Number animation
   function animateNumber(el, from, to, ms=450) {
     const start = performance.now();
     const f = Number(from) || 0;
@@ -82,7 +275,7 @@
 
     function tick(now) {
       const p = Math.min(1, (now - start) / ms);
-      const val = f + (t - f) * (1 - Math.pow(1 - p, 3)); // easeOutCubic
+      const val = f + (t - f) * (1 - Math.pow(1 - p, 3));
       el.textContent = fmtInt(val);
       if (p < 1) requestAnimationFrame(tick);
     }
@@ -163,48 +356,33 @@
   let lastSpeed = 0;
   let lastTot = 0;
 
-  // =========================
-  // Build chart + total from ESP32 daily list
-  // DAILY_NODE is a Firebase "push list":
+  // DAILY node is a Firebase push-list:
   // { "-Ng...": {footage: 12.3, timestamp: 1234567890}, ... }
-  // =========================
   function normalizeDailyList(obj) {
     if (!obj || typeof obj !== "object") return [];
     return Object.values(obj)
       .filter(v => v && typeof v === "object" && "timestamp" in v)
-      .map(v => ({
-        ts: Number(v.timestamp) || 0,
-        footage: Number(v.footage) || 0
-      }))
+      .map(v => ({ ts: Number(v.timestamp) || 0, footage: Number(v.footage) || 0 }))
       .filter(r => r.ts > 0);
   }
 
+  // Create 10-min bucket cumulative totals starting at 5am
   function buildCumulativeBuckets(dailyRows, start, buckets) {
     const bucketSum = new Array(buckets.length).fill(0);
 
-    // Only include rows within [start, now]
     const startMs = start.getTime();
     const endMs = buckets[buckets.length - 1].getTime() + 10*60000;
 
     for (const r of dailyRows) {
-      const d = new Date(r.ts * 1000); // epoch seconds -> ms
-      const ms = d.getTime();
+      const ms = r.ts * 1000;
       if (ms < startMs || ms >= endMs) continue;
 
       const idx = Math.floor((ms - startMs) / (10 * 60000));
-      if (idx >= 0 && idx < bucketSum.length) {
-        bucketSum[idx] += r.footage;
-      }
+      if (idx >= 0 && idx < bucketSum.length) bucketSum[idx] += r.footage;
     }
 
-    // Convert to cumulative (stock-chart style)
-    const cumulative = [];
     let run = 0;
-    for (let i=0;i<bucketSum.length;i++){
-      run += bucketSum[i];
-      cumulative.push(run);
-    }
-    return cumulative;
+    return bucketSum.map(x => (run += x));
   }
 
   async function refresh() {
@@ -214,7 +392,7 @@
     rangeText.textContent =
       `Buckets: ${pad2(start.getHours())}:${pad2(start.getMinutes())} → ${pad2(now.getHours())}:${pad2(now.getMinutes())} (local)`;
 
-    // 1) SPEED
+    // 1) SPEED (matches ESP32 PUT)
     let speedJson;
     try {
       speedJson = await fetchJSON(urlSpeed());
@@ -235,13 +413,13 @@
     speedBg.style.background = speedBgFor(speed);
     totDot.style.background = speedDotFor(speed);
 
-    // 2) DAILY LIST -> total + chart
+    // 2) DAILY LIST (matches ESP32 POST list)
     let dailyJson = null;
     try {
       dailyJson = await fetchJSON(urlDaily());
     } catch (e) {
-      // Don't kill the page if daily node missing
       showError(String(e.message || e));
+      dailyJson = null;
     }
 
     const rows = normalizeDailyList(dailyJson);
@@ -260,288 +438,6 @@
 
   refresh();
   setInterval(refresh, 15000);
-})();
-</script>
-
-(() => {
-  // =========================
-  // 1) SET YOUR BASE URL HERE
-  // =========================
-  // If your correct DB is NOT realtime2-94ff8, replace it here.
-  const FIREBASE_BASE = "https://realtime2-94ff8-default-rtdb.firebaseio.com";
-
-  // Only 18 Aztech for now:
-  const PRESS_KEY = "18";
-
-  // Firebase paths (your current schema from the console errors)
-  const urlNow = () => `${FIREBASE_BASE}/p/${PRESS_KEY}/now.json`;
-  const urlTot = (dateStr) => `${FIREBASE_BASE}/p/${PRESS_KEY}/d/${dateStr}/tot.json`;
-  const urlBucket = (dateStr, hhmm) => `${FIREBASE_BASE}/p/${PRESS_KEY}/d/${dateStr}/b/${hhmm}.json`;
-
-  // =========================
-  // Helpers
-  // =========================
-  const errBox = document.getElementById("errBox");
-  function showError(msg) {
-    errBox.style.display = "block";
-    errBox.textContent = msg;
-  }
-  function clearError() {
-    errBox.style.display = "none";
-    errBox.textContent = "";
-  }
-
-  async function fetchJSON(url) {
-    const res = await fetch(url, { cache: "no-store" });
-    const text = await res.text();
-
-    if (!res.ok) {
-      // Firebase often returns JSON error bodies; show both status + body
-      throw new Error(`HTTP ${res.status} for\n${url}\n\nResponse:\n${text}`);
-    }
-    try { return JSON.parse(text); }
-    catch { return text; }
-  }
-
-  function pad2(n) { return String(n).padStart(2, "0"); }
-
-  function ymdLocal(d = new Date()) {
-    // local YYYY-MM-DD
-    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-  }
-
-  function hhmmFromDate(d) {
-    return `${pad2(d.getHours())}${pad2(d.getMinutes())}`;
-  }
-
-  function addMinutes(date, mins) {
-    return new Date(date.getTime() + mins * 60000);
-  }
-
-  // Build bucket list from 05:00 to now, step 10 min, format HHMM like 1510
-  function buildBucketsToday() {
-    const now = new Date();
-    const start = new Date(now);
-    start.setHours(5, 0, 0, 0);
-
-    // if it's before 5am, still show the day but from 5am (will be empty)
-    const buckets = [];
-    let t = start;
-    while (t <= now) {
-      const hhmm = hhmmFromDate(t);
-      buckets.push(hhmm);
-      t = addMinutes(t, 10);
-    }
-    return { start, now, buckets };
-  }
-
-  // UI formatting
-  function fmtInt(n) {
-    if (n == null || Number.isNaN(n)) return "—";
-    return Math.round(Number(n)).toLocaleString();
-  }
-
-  // Speed color logic
-  function speedBgFor(v) {
-    const n = Number(v) || 0;
-    if (n < 70) return "rgba(255, 60, 60, .12)";
-    if (n < 200) return "rgba(255, 155, 60, .12)";
-    if (n >= 350) return "rgba(70, 220, 140, .12)";
-    return "rgba(255,255,255,.06)";
-  }
-  function speedDotFor(v) {
-    const n = Number(v) || 0;
-    if (n < 70) return "#ff3c3c";
-    if (n < 200) return "#ff9b3c";
-    if (n >= 350) return "#46dc8c";
-    return "#a9afbf";
-  }
-
-  // Number animation
-  function animateNumber(el, from, to, ms=450) {
-    const start = performance.now();
-    const f = Number(from) || 0;
-    const t = Number(to) || 0;
-
-    function tick(now) {
-      const p = Math.min(1, (now - start) / ms);
-      const val = f + (t - f) * (1 - Math.pow(1 - p, 3)); // easeOutCubic
-      el.textContent = fmtInt(val).replace(/,/g, ","); // keep commas
-      if (p < 1) requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
-  }
-
-  // =========================
-  // Simple chart (canvas)
-  // =========================
-  const canvas = document.getElementById("chart");
-  const ctx = canvas.getContext("2d");
-
-  function drawChart(points, labels) {
-    // points: array of numbers (may include null)
-    // labels: array of HH:MM strings
-    const w = canvas.width, h = canvas.height;
-    ctx.clearRect(0,0,w,h);
-
-    // padding
-    const padL = 60, padR = 18, padT = 16, padB = 42;
-    const plotW = w - padL - padR;
-    const plotH = h - padT - padB;
-
-    // background grid
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = "rgba(255,255,255,.08)";
-    ctx.lineWidth = 1;
-
-    // Y scale
-    const nums = points.filter(v => v != null && !Number.isNaN(v)).map(Number);
-    const max = nums.length ? Math.max(...nums) : 1;
-    const min = 0;
-
-    // gridlines
-    const lines = 5;
-    for (let i=0;i<=lines;i++){
-      const y = padT + (plotH * i/lines);
-      ctx.beginPath();
-      ctx.moveTo(padL, y);
-      ctx.lineTo(padL + plotW, y);
-      ctx.stroke();
-
-      // y labels
-      const v = max - (max-min)*i/lines;
-      ctx.fillStyle = "rgba(255,255,255,.65)";
-      ctx.font = "12px ui-sans-serif, system-ui";
-      ctx.textAlign = "right";
-      ctx.textBaseline = "middle";
-      ctx.fillText(fmtInt(v), padL-10, y);
-    }
-
-    // x labels (every ~hour)
-    const step = Math.max(1, Math.floor(labels.length / 8));
-    ctx.fillStyle = "rgba(255,255,255,.55)";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "top";
-    for (let i=0;i<labels.length;i+=step){
-      const x = padL + plotW * (i/(labels.length-1 || 1));
-      ctx.fillText(labels[i], x, padT + plotH + 10);
-    }
-
-    // line
-    ctx.strokeStyle = "rgba(120,200,255,.9)";
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-
-    let started = false;
-    points.forEach((v, i) => {
-      if (v == null || Number.isNaN(v)) return;
-      const x = padL + plotW * (i/(labels.length-1 || 1));
-      const y = padT + plotH * (1 - ((Number(v)-min)/((max-min)||1)));
-      if (!started) { ctx.moveTo(x,y); started=true; }
-      else ctx.lineTo(x,y);
-    });
-    ctx.stroke();
-  }
-
-  // =========================
-  // Data loading
-  // =========================
-  const speedValue = document.getElementById("speedValue");
-  const speedBg = document.getElementById("speedBg");
-  const totValue = document.getElementById("totValue");
-  const totUpdated = document.getElementById("totUpdated");
-  const totDot = document.getElementById("totDot");
-  const rangeText = document.getElementById("rangeText");
-
-  let lastSpeed = 0;
-  let lastTot = 0;
-
-  async function refresh() {
-    clearError();
-
-    const dateStr = ymdLocal(new Date());
-    const { start, now, buckets } = buildBucketsToday();
-
-    rangeText.textContent =
-      `Buckets: ${pad2(start.getHours())}:${pad2(start.getMinutes())} → ${pad2(now.getHours())}:${pad2(now.getMinutes())} (local)`;
-
-    // 1) now (speed)
-    let nowJson = null;
-    try {
-      nowJson = await fetchJSON(urlNow());
-    } catch (e) {
-      showError(String(e.message || e));
-      return;
-    }
-
-    // Your "now" value might be a raw number or object like { currentSpeed: 123 }
-    const speed =
-      (typeof nowJson === "number") ? nowJson :
-      (nowJson && typeof nowJson === "object" && "currentSpeed" in nowJson) ? nowJson.currentSpeed :
-      (nowJson && typeof nowJson === "object" && "speed" in nowJson) ? nowJson.speed :
-      0;
-
-    animateNumber(speedValue, lastSpeed, speed, 450);
-    lastSpeed = speed;
-
-    speedBg.style.background = speedBgFor(speed);
-    totDot.style.background = speedDotFor(speed);
-
-    // 2) tot (daily total)
-    let totJson = null;
-    try {
-      totJson = await fetchJSON(urlTot(dateStr));
-    } catch (e) {
-      // tot might not exist yet; show but keep chart alive
-      showError(String(e.message || e));
-    }
-
-    const tot =
-      (typeof totJson === "number") ? totJson :
-      (totJson && typeof totJson === "object" && "total" in totJson) ? totJson.total :
-      (totJson && typeof totJson === "object" && "tot" in totJson) ? totJson.tot :
-      (totJson && typeof totJson === "object" && "value" in totJson) ? totJson.value :
-      null;
-
-    if (tot != null) {
-      animateNumber(totValue, lastTot, tot, 600);
-      lastTot = tot;
-      totUpdated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-    } else {
-      totValue.textContent = "—";
-    }
-
-    // 3) buckets (series)
-    const values = [];
-    const labels = [];
-
-    // Fetch buckets sequentially (safer for Firebase and easier to debug)
-    for (const hhmm of buckets) {
-      labels.push(`${hhmm.slice(0,2)}:${hhmm.slice(2,4)}`);
-
-      try {
-        const b = await fetchJSON(urlBucket(dateStr, hhmm));
-
-        const v =
-          (typeof b === "number") ? b :
-          (b && typeof b === "object" && "v" in b) ? b.v :
-          (b && typeof b === "object" && "value" in b) ? b.value :
-          (b && typeof b === "object" && "feet" in b) ? b.feet :
-          null;
-
-        values.push(v == null ? null : Number(v));
-      } catch (e) {
-        // Bucket might not exist → treat as null, do NOT fail whole page
-        values.push(null);
-      }
-    }
-
-    drawChart(values, labels);
-  }
-
-  // kick off
-  refresh();
-  setInterval(refresh, 15000); // refresh every 15s
 })();
 </script>
 </body>
